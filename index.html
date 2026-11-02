@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0d6f63">
+<title>CFA Level I Study Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+img{max-width:100%}
+/* Layout: left rail of sections on desktop, bottom tab bar on phones; one working column of panels. */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --sunk:#e3e9ed; --line:#d3dce2;
+  --ink:#13202a; --muted:#5a6b78; --accent:#0d6f63; --accent-ink:#ffffff; --accent-soft:#d9eeea;
+  --good:#1f7a3f; --good-soft:#dcf0e2; --warn:#a56410; --warn-soft:#f7ead4; --bad:#b3362c; --bad-soft:#f8e1de;
+  --display:"Schibsted Grotesk",ui-sans-serif,system-ui,sans-serif;
+  --body:"Public Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e151b; --surface:#16212a; --sunk:#1d2a34; --line:#2a3945;
+  --ink:#e3eaef; --muted:#93a4b1; --accent:#43bfa9; --accent-ink:#06201c; --accent-soft:#16352f;
+  --good:#5bc483; --good-soft:#173322; --warn:#e3a54a; --warn-soft:#3a2c14; --bad:#ef7b70; --bad-soft:#3d1e1b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151b; --surface:#16212a; --sunk:#1d2a34; --line:#2a3945;
+  --ink:#e3eaef; --muted:#93a4b1; --accent:#43bfa9; --accent-ink:#06201c; --accent-soft:#16352f;
+  --good:#5bc483; --good-soft:#173322; --warn:#e3a54a; --warn-soft:#3a2c14; --bad:#ef7b70; --bad-soft:#3d1e1b; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.app{display:grid;grid-template-columns:210px 1fr;min-height:100%}
+nav.rail{position:sticky;top:0;height:100vh;padding:22px 14px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:4px}
+.brand{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.01em;padding:0 10px 14px}
+.brand small{display:block;font-family:var(--mono);font-weight:400;font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:2px}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:500}
+nav a:hover{background:var(--sunk);color:var(--ink)}
+nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav a .ct{margin-left:auto;font-family:var(--mono);font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:20px;padding:1px 7px}
+nav svg{width:18px;height:18px;flex:none}
+main{min-width:0;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em}
+h3{font-size:14px;margin:0;font-weight:600}
+.sub{color:var(--muted);margin:2px 0 0}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.panel-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.stat{background:var(--surface);padding:14px 16px}
+.stat b{display:block;font-family:var(--display);font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat span{font-size:12.5px;color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button,.btn{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+button:hover{background:var(--sunk)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.primary:hover{filter:brightness(1.06);background:var(--accent)}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+button.small{padding:4px 10px;font-size:13px}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:110px;font-family:var(--body);line-height:1.5}
+textarea.mono{font-family:var(--mono);font-size:13px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:500;min-width:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>*{flex:1 1 140px}
+.row>.fit{flex:0 0 auto}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.acc{background:var(--accent-soft);color:var(--accent)}
+.list{display:flex;flex-direction:column}
+.li{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);min-width:0}
+.li:first-child{border-top:0}
+.li .grow{flex:1;min-width:0}
+.li .meta{font-size:12.5px;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;padding:14px;border:1px dashed var(--line);border-radius:8px;background:var(--bg)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.now td{background:var(--accent-soft)}
+.bar{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.bar.warn i{background:var(--warn)}
+.hero{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+.next{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);display:flex;flex-direction:column;gap:12px}
+.next .eyebrow{color:inherit;opacity:.8}
+.next h2{font-size:22px}
+.next p{margin:0;opacity:.92}
+.next button{background:var(--accent-ink);color:var(--accent);border-color:var(--accent-ink);align-self:flex-start}
+.tpl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.tpl button{flex-direction:column;align-items:flex-start;text-align:left;gap:2px;padding:12px 14px;font-weight:500}
+.tpl button b{font-weight:700}
+.tpl button span{font-size:12.5px;color:var(--muted)}
+.tpl button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+/* session runner */
+.runner{display:grid;grid-template-columns:230px 1fr;gap:18px;align-items:start}
+.steps{display:flex;flex-direction:column;gap:2px}
+.step{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;font-size:14px;color:var(--muted);background:transparent;border:0;text-align:left;width:100%;font-weight:500}
+.step .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:11px;flex:none}
+.step.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.step.on .dot{border-color:var(--accent);color:var(--accent)}
+.step.done .dot{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.step .m{margin-left:auto;font-family:var(--mono);font-size:11.5px}
+.clock{font-family:var(--mono);font-size:56px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.clock.over{color:var(--warn)}
+.why{font-size:13px;color:var(--muted);border-left:3px solid var(--accent);padding:2px 0 2px 10px}
+.guide{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.ctrl{display:flex;gap:8px;flex-wrap:wrap}
+.card-face{min-height:150px;display:grid;place-items:center;text-align:center;font-size:18px;padding:24px;background:var(--bg);border-radius:var(--r);border:1px solid var(--line);white-space:pre-wrap}
+.card-face.back{font-size:16px}
+.rate{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rate button{justify-content:center;flex-direction:column;gap:0}
+.rate small{font-weight:400;font-size:11.5px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:600;font-size:14px;z-index:50}
+.sync{font-size:12px;color:var(--muted);padding:0 10px;margin-top:auto}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
+.chk input{width:auto}
+details summary{cursor:pointer;color:var(--muted);font-size:13.5px;font-weight:600}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  nav.rail{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;justify-content:space-around;padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));border-right:0;border-top:1px solid var(--line);z-index:20;gap:0}
+  .brand,.sync{display:none}
+  nav a{flex-direction:column;gap:2px;font-size:10.5px;padding:6px 4px;flex:1;justify-content:center}
+  nav a .ct{position:absolute;margin:0 0 0 22px;font-size:9px;padding:0 5px}
+  nav a{position:relative}
+  main{padding-bottom:110px}
+  .hero,.grid2,.grid3,.runner{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .steps{flex-direction:row;overflow-x:auto}
+  .step{flex:none;width:auto}
+  .step .m{display:none}
+  .clock{font-size:44px}
+}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .4s ease}}
+.auth{min-height:100vh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.auth form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px}
+.auth .err{color:var(--bad);font-size:13.5px;min-height:1em;margin:0}
+.signout{margin-top:6px;font-size:13px;padding:6px 10px;justify-content:flex-start;border-color:transparent;background:transparent;color:var(--muted)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+<div class="auth" id="auth" hidden>
+  <form class="panel" id="loginForm" autocomplete="on">
+    <div><div class="eyebrow">CFA Level I · May 2027</div><h1 style="font-size:24px;margin-top:4px">Study Hub</h1></div>
+    <label>Email<input id="lEmail" type="email" autocomplete="username" required></label>
+    <label>Password<input id="lPass" type="password" autocomplete="current-password" required></label>
+    <label class="chk"><input type="checkbox" id="lTrust"> Keep me signed in on this device</label>
+    <p class="sub" style="font-size:12.5px;margin:-6px 0 0">Leave this unticked on public computers. You’ll be signed out when the browser closes or after an hour without activity.</p>
+    <p class="err" id="lErr"></p>
+    <button class="primary" type="submit" id="lBtn" style="justify-content:center">Sign in</button>
+  </form>
+</div>
+<div class="app" id="app" hidden>
+  <nav class="rail" aria-label="Sections">
+    <div class="brand">CFA L1 Hub<small>MAY 11–17, 2027</small></div>
+    <a href="#today" data-nav="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</a>
+    <a href="#progress" data-nav="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><rect x="5" y="11" width="3" height="6"/><rect x="10.5" y="7" width="3" height="10"/><rect x="16" y="4" width="3" height="13"/></svg>Progress</a>
+    <a href="#session" data-nav="session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 5l12 7-12 7z"/></svg>Session</a>
+    <a href="#plan" data-nav="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Plan</a>
+    <a href="#cards" data-nav="cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="12" rx="2"/><path d="M7 7V5h14v12h-4"/></svg>Anki<span class="ct" id="dueCt" hidden></span></a>
+    <a href="#mistakes" data-nav="mistakes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>Mistakes</a>
+    <a href="#scores" data-nav="scores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Scores</a>
+    <a href="#notes" data-nav="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>Notes</a>
+    <div class="sync"><span id="sync">Connecting…</span><button class="signout" data-act="signout">Sign out</button></div>
+  </nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- reference data ---------- */
+const EXAM = '2027-05-11';
+const TOPICS = {
+  ethics:{name:'Ethics & Professional Standards',short:'Ethics',w:'15–20%',fam:'low'},
+  quant:{name:'Quantitative Methods',short:'Quant',w:'6–9%',fam:'med'},
+  econ:{name:'Economics',short:'Economics',w:'6–9%',fam:'med'},
+  fsa:{name:'Financial Statement Analysis',short:'FSA',w:'11–14%',fam:'low'},
+  corp:{name:'Corporate Issuers',short:'Corporate',w:'6–9%',fam:'med'},
+  equity:{name:'Equity Investments',short:'Equity',w:'11–14%',fam:'high'},
+  fi:{name:'Fixed Income',short:'Fixed Income',w:'11–14%',fam:'med'},
+  deriv:{name:'Derivatives',short:'Derivatives',w:'5–8%',fam:'low'},
+  alts:{name:'Alternative Investments',short:'Alternatives',w:'7–10%',fam:'med'},
+  pm:{name:'Portfolio Management',short:'Portfolio Mgmt',w:'8–12%',fam:'high'}
+};
+const START='2026-11-02', REVIEW_END='2027-04-11', MOCK_END='2027-05-09';
+const DEFAULT_PLAN={order:['ethics','quant','econ','fsa','corp','equity','fi','deriv','alts','pm'],weeks:{ethics:1,quant:2,econ:2,fsa:5,corp:1,equity:2,fi:3,deriv:2,alts:1,pm:1}};
+const SCHWESER_PLAN={order:['quant','econ','corp','fsa','equity','fi','deriv','alts','pm','ethics'],weeks:{quant:1,econ:2,corp:1,fsa:5,equity:2,fi:3,deriv:2,alts:1,pm:1,ethics:2}};
+let BLOCKS=[];
+function planCfg(){const p=S.settings?.plan;return p&&Array.isArray(p.order)&&p.order.length===10&&p.weeks?p:DEFAULT_PLAN}
+function computeBlocks(){
+  const p=planCfg(),out=[];let d=START;
+  p.order.forEach((k,i)=>{const w=Math.max(1,p.weeks[k]||1),e=addDays(d,w*7-1);
+    out.push({k,s:d,e,label:k==='ethics'&&i===0?'Ethics first pass':null,note:(d<='2026-12-27'&&e>='2026-12-21')?'Christmas week kept light':''});d=addDays(e,1)});
+  const rEnd=addDays(d,6)>REVIEW_END?addDays(d,6):REVIEW_END;
+  out.push({k:'review',s:d,e:rEnd,label:p.order[0]==='ethics'?'Review + Ethics deep pass':'Review'});
+  const mS=addDays(rEnd,1);
+  out.push({k:'mocks',s:mS,e:mS>MOCK_END?mS:MOCK_END,label:'Mocks (Apr 17, Apr 24, May 1)'});
+  out.push({k:'exam',s:'2027-05-11',e:'2027-05-17',label:'Exam window'});
+  return out;
+}
+function learnEnd(){return BLOCKS.find(b=>b.k==='review')?.s?addDays(BLOCKS.find(b=>b.k==='review').s,-1):'2027-03-21'}
+function checkpoints(){return [
+  {d:learnEnd(),t:'Every topic done once, 65%+ on mixed sets'},
+  {d:'2027-04-17',t:'Mock 1 — 60% floor'},
+  {d:'2027-04-24',t:'Mock 2 — aim for 65%+'},
+  {d:'2027-05-01',t:'Mock 3 (CFA Institute) — aim for 70%+'}]}
+const FAM = {low:'New to you',med:'Some background',high:'You use it at work'};
+const TAGS = {concept:'Concept',formula:'Formula',misread:'Misread',calc:'Calculator'};
+const TAG_FIX = {concept:'Re-study the module',formula:'Make a flashcard',misread:'Slow down on the question stem',calc:'Practise the keystrokes'};
+
+/* ---------- session templates ---------- */
+const WHY = {
+  preview:'Pretesting and advance organisers: knowing the goal first gives new material something to attach to.',
+  learn:'Generation effect: solving examples yourself before reading the solution beats reading along.',
+  blurt:'Retrieval practice: pulling information out of memory strengthens it far more than rereading.',
+  quiz:'The testing effect: questions build memory, and the explanations correct errors while they are fresh.',
+  capture:'Spaced repetition only works on what you capture. Log misses now, while you know why.',
+  cards:'Spacing: reviewing just before you forget is the cheapest way to keep old topics alive.',
+  mixed:'Interleaving: mixed sets train you to recognise which concept a question is testing.',
+  redo:'Error correction: redoing a missed question days later turns a weak spot into a known one.',
+  formula:'Free recall of a whole sheet shows exactly what you have forgotten.',
+  ethics:'Little and often: Ethics wording sticks through steady exposure, not cramming.',
+  break:'Short breaks between blocks restore attention without breaking your rhythm.',
+  timed:'Practising at exam pace (about 90 seconds a question) builds the timing you need in May.'
+};
+function moduleSteps(fam){
+  const learnGuide = {
+    low:['Watch the Masterclass segment at 1.25–1.5x for the intuition.','Then read the SchweserNotes module.','Solve every worked example on your calculator before reading the solution.'],
+    med:['Read the SchweserNotes module.','Solve every worked example on your calculator before reading the solution.','Save the video for anything the quiz shows you missed.'],
+    high:['You already took the quiz cold. Skim the notes only for what you missed.','Skip the video unless a miss still makes no sense.']
+  }[fam];
+  const preview = {id:'preview',type:'text',t:'Preview the LOS',m:2,why:WHY.preview,guide:['Read the module’s Learning Outcome Statements.','“Calculate” means you need the formula and calculator steps.','“Describe” or “compare” means concepts and distinctions.']};
+  const learn = {id:'learn',type:'text',t:fam==='high'?'Fill the gaps':'Learn',m:fam==='high'?20:30,why:WHY.learn,guide:learnGuide};
+  const blurt = {id:'blurt',type:'blurt',t:'Blurt from memory',m:5,why:WHY.blurt,guide:['Close the notes. Write the key ideas, formulas and distinctions you remember.','Check against the notes. When you finish a reading, check against its Key Concepts page.','List what you missed. Those gaps become Anki cards.']};
+  const quiz = {id:'quiz',type:'quiz',t:fam==='high'?'Quiz cold first':'Module quiz',m:fam==='high'?15:20,why:WHY.quiz,guide:['Do the module quiz in the Schweser QBank, untimed.','Read every explanation, including for ones you got right.','Log each miss with the reason you got it wrong.']};
+  const capture = {id:'capture',type:'capture',t:'Capture',m:5,why:WHY.capture,guide:['Add new formulas to the topic’s formula sheet.','Turn each gap and miss into a flashcard.']};
+  return fam==='high' ? [preview,quiz,learn,blurt,capture] : [preview,learn,blurt,quiz,capture];
+}
+const TEMPLATES = {
+  module:{name:'Module session',desc:'Weekday · about 60 min · one module',build:t=>moduleSteps(TOPICS[t]?.fam||'med')},
+  deep:{name:'Deep block',desc:'Saturday · 3 hours · new material',build:t=>[
+    {id:'warm',type:'cards',t:'Warm up with Anki',m:10,why:WHY.cards,guide:['Clear today\u2019s Anki reviews before new material.']},
+    {id:'b1',type:'text',t:'Learn: block 1',m:55,why:WHY.learn,guide:moduleSteps(TOPICS[t]?.fam||'med').find(s=>s.id==='learn').guide},
+    {id:'brk',type:'text',t:'Break',m:10,why:WHY.break,guide:['Stand up, get water, no phone scrolling.']},
+    {id:'b2',type:'blurt',t:'Blurt block 1, then learn block 2',m:55,why:WHY.blurt,guide:['Spend 5 minutes blurting block 1 from memory, then continue with new material.']},
+    {id:'mx',type:'quiz',t:'Questions on the week',m:45,why:WHY.mixed,guide:['Build a QBank quiz across everything from this week, mixed rather than module by module.']},
+    {id:'cap',type:'capture',t:'Capture',m:5,why:WHY.capture,guide:['Formulas to the sheet, misses to the log, gaps to flashcards.']}
+  ]},
+  review:{name:'Weekly review',desc:'Sunday · 2 hours · retention',build:t=>[
+    {id:'tq',type:'quiz',t:'Timed topic quiz',m:45,why:WHY.timed,guide:['Do any topic revisits due this week first (listed on the Plan tab): 20–30 unseen QBank questions on that topic, closed-book.','Otherwise a topic test on the current topic at about 90 seconds a question.','From January on, make it 70% current topic, 30% finished topics.']},
+    {id:'redo',type:'redo',t:'Redo this week’s mistakes',m:30,why:WHY.redo,guide:['Redo each logged question without looking at the answer. Tick it when you get it right.']},
+    {id:'eth',type:'quiz',t:'Ethics questions',m:20,why:WHY.ethics,guide:['20 minutes of Ethics questions, every week until the exam.'],forceTopic:'ethics'},
+    {id:'fs',type:'formula',t:'Formula sheet from memory',m:20,why:WHY.formula,guide:['Write the formula sheet for one finished topic from scratch, then compare.']},
+    {id:'prev',type:'text',t:'Preview next week',m:5,why:WHY.preview,guide:['Open next week’s modules and read their LOS so Monday starts fast.']}
+  ]},
+  mixed:{name:'Mixed question set',desc:'Review phase · 90 min',build:t=>[
+    {id:'cards',type:'cards',t:'Anki reviews',m:10,why:WHY.cards,guide:['Clear today\u2019s Anki reviews.']},
+    {id:'mx',type:'quiz',t:'Mixed QBank set',m:60,why:WHY.mixed,guide:['Custom quiz weighted to your two weakest topics, timed at 90 seconds a question.']},
+    {id:'cap',type:'capture',t:'Review and capture',m:20,why:WHY.capture,guide:['Read every explanation and log each miss with a reason tag.']}
+  ]},
+  mock:{name:'Mock exam',desc:'Exam conditions · 4.5 hours',build:t=>[
+    {id:'s1',type:'text',t:'Session 1',m:135,why:WHY.timed,guide:['90 questions, no notes, phone away, approved calculator only.']},
+    {id:'brk',type:'text',t:'Break',m:30,why:WHY.break,guide:['Eat something. Don’t review session 1.']},
+    {id:'s2',type:'quiz',t:'Session 2 and score',m:135,why:WHY.timed,guide:['90 questions. Enter your total score for both sessions (out of 180) at the end.']}
+  ]}
+};
+
+/* ---------- utils ---------- */
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n=>String(n).padStart(2,'0');
+const iso = d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse = s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const todayISO = ()=>iso(new Date());
+const addDays = (s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+const diffDays = (a,b)=>Math.round((parse(b)-parse(a))/864e5);
+const weekStart = s=>{const d=parse(s);const w=(d.getDay()+6)%7;d.setDate(d.getDate()-w);return iso(d)};
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmt = s=>{const d=parse(s);return MON[d.getMonth()]+' '+d.getDate()};
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const hrs = m=>(m/60).toFixed(m>=600?0:1);
+const pct = (c,n)=>n?Math.round(c/n*100):null;
+function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
+function blockFor(day){return BLOCKS.find(b=>day>=b.s&&day<=b.e)||(day<BLOCKS[0].s?BLOCKS[0]:null)}
+function blockName(b){return b.label||TOPICS[b.k]?.name||b.k}
+function weekTarget(ws){
+  if(ws>='2027-05-10')return 0;
+  if(ws==='2026-12-21')return 5;
+  if(ws>='2027-04-12')return 14;
+  if(ws>='2027-03-22')return 11;
+  return 10.5;
+}
+function topicFromBlock(b){return TOPICS[b?.k]?b.k:'ethics'}
+
+/* ---------- store: Supabase (auth + one "docs" table, private per user by row-level security) ---------- */
+const COLLS = ['sessions','cards','mistakes','scores','notes','modules','checkins','settings'];
+const S = {sessions:{},cards:{},mistakes:{},scores:{},notes:{},modules:{},checkins:{},settings:{}};
+BLOCKS=computeBlocks();
+const CFG = window.CFA_CONFIG||{};
+let sb=null, user=null;
+function trusted(){try{return localStorage.getItem('cfa-trusted')==='1'}catch(e){return false}}
+function draftStore(){try{return trusted()?localStorage:sessionStorage}catch(e){return null}}
+function makeClient(){sb=supabase.createClient(CFG.url,CFG.key,{auth:{storage:trusted()?window.localStorage:window.sessionStorage,persistSession:true,autoRefreshToken:true}})}
+async function put(c,id,data){
+  S[c][id]=data; render();
+  const {error}=await sb.from('docs').upsert({user_id:user.id,coll:c,id,data,updated_at:new Date().toISOString()},{onConflict:'user_id,coll,id'});
+  if(error)handleErr(error);
+}
+async function del(c,id){
+  delete S[c][id]; render();
+  const {error}=await sb.from('docs').delete().eq('user_id',user.id).eq('coll',c).eq('id',id);
+  if(error)handleErr(error);
+}
+function handleErr(e){toast('Couldn\u2019t save that change. Check your connection and try again.');console.error(e)}
+function setSync(t){const el=$('#sync');if(el)el.textContent=t}
+async function loadAll(){
+  setSync('Syncing…');
+  const fresh={};COLLS.forEach(c=>fresh[c]={});
+  for(let from=0;;from+=1000){
+    const {data,error}=await sb.from('docs').select('coll,id,data').range(from,from+999);
+    if(error){setSync('Can\u2019t reach your data. Check your connection.');return}
+    data.forEach(r=>{if(fresh[r.coll])fresh[r.coll][r.id]=r.data});
+    if(data.length<1000)break;
+  }
+  COLLS.forEach(c=>S[c]=fresh[c]);
+  setSync('Synced '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
+  forceRender();
+}
+function showLogin(msg){$('#app').hidden=true;$('#auth').hidden=false;$('#lTrust').checked=trusted();$('#lErr').textContent=msg||'';setTimeout(()=>$('#lEmail').focus(),0)}
+async function start(u){user=u;$('#auth').hidden=true;$('#app').hidden=false;route();await loadAll();armIdle()}
+async function initStore(){
+  if(!CFG.url||!CFG.key||!window.supabase){document.body.innerHTML='<p style="padding:24px">The hub isn\u2019t configured yet. Add the Supabase URL and key to config.js.</p>';return}
+  makeClient();
+  const {data:{session}}=await sb.auth.getSession();
+  if(session)start(session.user);else showLogin();
+}
+$('#loginForm')?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const want=$('#lTrust').checked;
+  try{localStorage.setItem('cfa-trusted',want?'1':'0')}catch(_){}
+  makeClient();
+  const btn=$('#lBtn');btn.disabled=true;btn.textContent='Signing in…';$('#lErr').textContent='';
+  const {data,error}=await sb.auth.signInWithPassword({email:$('#lEmail').value.trim(),password:$('#lPass').value});
+  btn.disabled=false;btn.textContent='Sign in';
+  if(error){$('#lErr').textContent=error.message==='Invalid login credentials'?'Email or password is wrong.':error.message;return}
+  $('#lPass').value='';start(data.user);
+});
+async function signOut(msg){
+  try{await sb.auth.signOut()}catch(_){}
+  try{sessionStorage.removeItem(DKEY);if(!trusted())localStorage.removeItem(DKEY)}catch(_){}
+  run=null;COLLS.forEach(c=>S[c]={});user=null;showLogin(msg);
+}
+let idleT=null;
+function armIdle(){if(trusted())return;clearTimeout(idleT);idleT=setTimeout(()=>signOut('Signed out after an hour without activity.'),60*60*1000)}
+['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(user)armIdle()},{passive:true}));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&user){const a=document.activeElement;if(!(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT')))loadAll()}});
+
+/* ---------- derived ---------- */
+const arr = c=>Object.entries(S[c]).map(([id,v])=>({id,...v}));
+function minutesByWeek(){const o={};arr('sessions').forEach(s=>{const w=weekStart(s.date);o[w]=(o[w]||0)+(s.minutes||0)});return o}
+function dueCards(){return pendingCards()}
+const pendingCards = ()=>arr('cards').filter(c=>!c.added).sort((a,b)=>(a.created||'')<(b.created||'')?-1:1);
+const ankiDone = d=>!!S.checkins[d]?.anki;
+function ankiStreak(){let n=0,d=todayISO();if(!ankiDone(d))d=addDays(d,-1);while(ankiDone(d)){n++;d=addDays(d,-1)}return n}
+async function toggleAnki(){const t=todayISO();if(ankiDone(t))await del('checkins',t);else await put('checkins',t,{anki:true,at:Date.now()});forceRender()}
+/* topic revisits: ~1, 3 and 8 weeks after a topic is finished (planned block end, or the day its last module was ticked) */
+const REV_GAPS=[7,21,56];
+function revisitBase(k){
+  const b=BLOCKS.find(x=>x.k===k), it=mods(k);
+  if(it.length&&it.every(m=>m.done)){const last=it.map(m=>m.doneOn||b.e).sort().at(-1);return last}
+  return b.e;
+}
+function revisits(){
+  const out=[];
+  Object.keys(TOPICS).forEach(k=>{const base=revisitBase(k);REV_GAPS.forEach((g,i)=>{const date=addDays(base,g);if(date>'2027-05-09')return;
+    const sc=arr('scores').find(s=>s.type==='revisit'&&s.topic===k&&s.rev===i+1);out.push({k,n:i+1,date,base,score:sc})})});
+  return out.sort((a,b)=>a.date<b.date?-1:1);
+}
+function baselineScore(k){const r=arr('scores').filter(s=>s.topic===k&&s.type==='test').sort((a,b)=>a.date<b.date?-1:1);if(r.length)return r[0].pct;const q=topicQuiz(k).filter(x=>x.type!=='revisit');return q.length?Math.round(q.reduce((a,x)=>a+x.p,0)/q.length):null}
+function revisitRows(list,inline){
+  return `<div class="list">${list.map(r=>{const base=baselineScore(r.k),drop=r.score&&base!=null?base-r.score.pct:null;
+    return `<div class="li" style="flex-wrap:wrap"><span class="pill num ${!r.score&&r.date<=todayISO()?'warn':''}">${fmt(r.date)}</span><div class="grow"><b>${esc(TOPICS[r.k].short)}</b> · revisit ${r.n} of 3<div class="meta">20–30 unseen QBank questions on ${esc(TOPICS[r.k].short)}, closed-book, ~90 s each${base!=null?` · original ${base}%`:''}</div></div>
+    ${r.score?`<b class="num">${r.score.pct}%</b><span class="pill ${drop==null||drop<=10?'good':'bad'}">${drop==null?'Logged':drop<=0?'Holding up':drop<=10?'Normal drop':'Needs an extra session'}</span>`
+    :inline?`<div class="row fit" style="gap:6px;flex-wrap:nowrap"><input id="rvC_${r.k}_${r.n}" type="number" min="0" inputmode="numeric" placeholder="Correct" style="width:84px"><input id="rvN_${r.k}_${r.n}" type="number" min="1" inputmode="numeric" placeholder="Of" style="width:64px"><button class="small" data-act="logrev" data-k="${r.k}" data-n="${r.n}">Log</button></div>`:''}</div>`}).join('')}</div>`;
+}
+function streak(){
+  const days=new Set(arr('sessions').map(s=>s.date));let n=0,d=todayISO();
+  if(!days.has(d))d=addDays(d,-1);
+  while(days.has(d)){n++;d=addDays(d,-1)}
+  return n;
+}
+function topicQuiz(k){
+  const rows=[];
+  arr('sessions').forEach(s=>(s.quizzes||[]).forEach(q=>{if(q.topic===k&&q.n)rows.push({date:s.date,p:pct(q.c,q.n),n:q.n})}));
+  arr('scores').forEach(s=>{if(s.topic===k&&s.pct!=null)rows.push({date:s.date,p:s.pct,n:s.n||0,type:s.type})});
+  rows.sort((a,b)=>a.date<b.date?-1:1);
+  return rows;
+}
+
+/* ---------- routing ---------- */
+const VIEWS = ['today','progress','session','plan','cards','mistakes','scores','notes'];
+let view = 'today';
+function route(){if(!user)return;const h=location.hash.slice(1);view=VIEWS.includes(h)?h:'today';render();window.scrollTo(0,0)}
+window.addEventListener('hashchange',()=>route());
+
+/* ---------- session runner state ---------- */
+let run = null; // {tpl, topic, module, steps, i, started, stepStart, elapsed:[], data:{blurt,gaps,quizzes:[],mistakes:[],cards:[],formulas,redone:[]}}
+const DKEY='cfa-hub-run';
+function saveRun(){try{const st=draftStore();if(!st)return;run?st.setItem(DKEY,JSON.stringify(run)):st.removeItem(DKEY)}catch(e){}}
+try{const r=JSON.parse(draftStore()?.getItem(DKEY)||'null');if(r&&r.steps)run=r}catch(e){}
+let setup = {tpl:'module',topic:topicFromBlock(blockFor(todayISO())),module:'',touched:false};
+let tick=null, wake=null;
+function startTick(){clearInterval(tick);tick=setInterval(updateClock,1000)}
+function stepElapsed(i){if(!run)return 0;let e=run.elapsed[i]||0;if(i===run.i&&run.stepStart&&!run.paused)e+=(Date.now()-run.stepStart)/1000;return e}
+function updateClock(){
+  if(!run||view!=='session')return;
+  const st=run.steps[run.i]; const el=$('#clock'); if(!el)return;
+  const left=st.m*60-stepElapsed(run.i);
+  const a=Math.abs(Math.round(left));
+  el.textContent=(left<0?'+':'')+Math.floor(a/60)+':'+pad(a%60);
+  el.classList.toggle('over',left<0);
+  if(left<=0&&!run.chimed?.[run.i]){run.chimed=run.chimed||{};run.chimed[run.i]=1;chime();saveRun()}
+}
+let actx=null;
+function chime(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,actx.currentTime);g.gain.exponentialRampToValueAtTime(.2,actx.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+.6);o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+.65)}catch(e){}}
+async function keepAwake(){try{if('wakeLock' in navigator)wake=await navigator.wakeLock.request('screen')}catch(e){}}
+function bank(){if(run&&run.stepStart&&!run.paused){run.elapsed[run.i]=(run.elapsed[run.i]||0)+(Date.now()-run.stepStart)/1000;run.stepStart=Date.now()}}
+
+/* ---------- views ---------- */
+function render(){
+  BLOCKS=computeBlocks();
+  document.querySelectorAll('nav a').forEach(a=>{if(a.dataset.nav===view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  const due=dueCards().length,ct=$('#dueCt');ct.hidden=!due;ct.textContent=due;
+  // keep focus/typing safe: don't re-render while editing a field in session/notes
+  const act=document.activeElement;
+  if(act&&(act.tagName==='TEXTAREA'||act.tagName==='INPUT')&&act.closest('#view')&&!render.force){return}
+  render.force=false;
+  const v=$('#view');
+  v.innerHTML=({today:vToday,progress:vProgress,session:vSession,plan:vPlan,cards:vCards,mistakes:vMistakes,scores:vScores,notes:vNotes})[view]();
+  if(view==='session')updateClock();
+  if(view==='notes')fillNotes();
+}
+function forceRender(){render.force=true;render()}
+
+function vToday(){
+  const t=todayISO(), b=blockFor(t), daysLeft=diffDays(t,EXAM);
+  const mw=minutesByWeek(), ws=weekStart(t), wk=(mw[ws]||0)/60, target=weekTarget(ws);
+  const due=dueCards().length, open=arr('mistakes').filter(m=>!m.redone).length;
+  const started=t>=BLOCKS[0].s;
+  const recent=arr('sessions').sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,5);
+  const dow=parse(t).getDay();
+  const sugg=dow===6?'deep':dow===0?'review':(b&&(b.k==='review'))?'mixed':(b&&b.k==='mocks')?'mixed':'module';
+  const topic=topicFromBlock(b);
+  const blockLeft=b?diffDays(t,b.e)+1:0;
+  return `
+  <header><div class="eyebrow">${esc(parse(t).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}))}</div>
+  <h1>${daysLeft>0?daysLeft+' days to the exam window':'Exam window'}</h1>
+  <p class="sub">${started?`Current block: <b>${esc(b?blockName(b):'—')}</b>${b&&b.e?` · ${blockLeft} day${blockLeft===1?'':'s'} left`:''}`:`Study starts ${fmt(BLOCKS[0].s)} with ${esc(blockName(BLOCKS[0]))}.`}</p></header>
+  <div class="hero">
+    <section class="panel next">
+      <div class="eyebrow">Next up</div>
+      <h2>${esc(TEMPLATES[sugg].name)}${TOPICS[topic]&&sugg!=='mixed'?' · '+esc(TOPICS[topic].short):''}</h2>
+      ${sugg==='module'||sugg==='deep'?(()=>{const nm=mods(topic).find(m=>!m.done);return nm?`<p style="font-weight:600">Next: ${esc(nm.name)}</p>`:''})():''}
+      <p>${sugg==='module'?`${esc(FAM[TOPICS[topic].fam])}, so the session ${TOPICS[topic].fam==='high'?'starts with the quiz cold':'starts with '+(TOPICS[topic].fam==='low'?'the video':'the notes')}.`:esc(TEMPLATES[sugg].desc)}</p>
+      <button data-act="quickstart" data-tpl="${sugg}" data-topic="${topic}">${run?'Resume session':'Start session'}</button>
+    </section>
+    <section class="panel">
+      <div class="panel-h"><h2>This week</h2><span class="pill ${wk>=target?'good':wk>=target*0.6?'acc':'warn'}">${wk>=target?'On target':'Week of '+fmt(ws)}</span></div>
+      <div class="num" style="font-size:28px;font-weight:600">${hrs(wk*60)}<span style="font-size:15px;color:var(--muted)"> / ${target} h</span></div>
+      <div class="bar ${wk<target*0.6&&dow!==1?'warn':''}" style="margin:8px 0 14px"><i style="width:${Math.min(100,target?wk/target*100:0)}%"></i></div>
+      <div class="list">
+        <div class="li"><span class="grow">Anki today${ankiStreak()?` · ${ankiStreak()} day streak`:''}</span><button class="small ${ankiDone(t)?'':'primary'}" data-act="anki">${ankiDone(t)?'Done ✓':'Mark done'}</button></div>
+        ${(()=>{const r=revisits().filter(x=>!x.score&&x.date<=addDays(t,6));return r.length?`<a class="li" href="#plan" style="color:inherit;text-decoration:none"><span class="grow">Topic revisits due${r.some(x=>x.date<=t)?'':' this week'}</span><b class="num">${r.map(x=>TOPICS[x.k].short).join(', ')}</b></a>`:''})()}
+        ${pendingCards().length?`<a class="li" href="#cards" style="color:inherit;text-decoration:none"><span class="grow">Cards waiting to import</span><b class="num">${pendingCards().length}</b></a>`:''}
+        <a class="li" href="#mistakes" style="color:inherit;text-decoration:none"><span class="grow">Mistakes to redo</span><b class="num">${open}</b></a>
+        <a class="li" href="#progress" style="color:inherit;text-decoration:none"><span class="grow">Modules done</span><b class="num">${Object.keys(TOPICS).reduce((a,k)=>a+mods(k).filter(m=>m.done).length,0)} / ${Object.keys(TOPICS).reduce((a,k)=>a+mods(k).length,0)}</b></a>
+        <div class="li"><span class="grow">Study streak</span><b class="num">${streak()} day${streak()===1?'':'s'}</b></div>
+      </div>
+    </section>
+  </div>
+  <section class="panel">
+    <div class="panel-h"><h2>Recent sessions</h2><a href="#plan" class="sub" style="font-size:13px">See the plan</a></div>
+    ${recent.length?`<div class="list">${recent.map(s=>`<div class="li"><div class="grow"><b>${esc(TEMPLATES[s.tpl]?.name||'Session')}</b> · ${esc(TOPICS[s.topic]?.short||'')}${s.module?' · '+esc(s.module):''}<div class="meta">${fmt(s.date)} · ${s.minutes} min${(s.quizzes||[]).filter(q=>q.n).map(q=>` · quiz ${pct(q.c,q.n)}%`).join('')}</div></div>${s.focus?`<span class="pill">Focus ${s.focus}/5</span>`:''}</div>`).join('')}</div>`
+    :`<div class="empty">Finished sessions show up here with time spent and quiz scores. Start your first one above; the timer and steps guide you through it.</div>`}
+  </section>
+  <section class="panel">
+    <h2 style="margin-bottom:10px">Rules that make the hours count</h2>
+    <div class="grid2" style="gap:10px 24px;font-size:14px">
+      <div><b>Questions every day.</b> Reading without questions feels productive but doesn’t stick.</div>
+      <div><b>Recall before you review.</b> Blurt from memory, then check. Never reread to feel ready.</div>
+      <div><b>Cards daily, even on rest days.</b> Ten minutes stops a pile-up.</div>
+      <div><b>Stop on time.</b> Sustainable for 27 weeks beats heroic for three.</div>
+    </div>
+  </section>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)"><span>${trusted()?'Signed in on this device':'Public-computer mode: you\u2019ll be signed out when the browser closes'}</span><button class="small" data-act="signout">Sign out</button></div>`;
+}
+
+/* ---------- modules + progress ---------- */
+const mods = k=>S.modules[k]?.items||[];
+const wMid = k=>{const [a,b]=TOPICS[k].w.replace('%','').split('–').map(Number);return (a+b)/2};
+function expectedFrac(k){
+  const b=BLOCKS.find(x=>x.k===k), t=todayISO(); if(!b)return 0;
+  if(t<b.s)return 0; if(t>b.e)return 1;
+  return (diffDays(b.s,t)+1)/(diffDays(b.s,b.e)+1);
+}
+function topicStats(k){
+  const it=mods(k), done=it.filter(m=>m.done).length;
+  const mins=arr('sessions').filter(s=>s.topic===k).reduce((a,s)=>a+(s.minutes||0),0);
+  const q=topicQuiz(k).slice(-5), avg=q.length?Math.round(q.reduce((a,x)=>a+x.p,0)/q.length):null;
+  return {k,total:it.length,done,frac:it.length?done/it.length:0,exp:expectedFrac(k),mins,avg,
+    cards:arr('cards').filter(c=>c.topic===k).length,open:arr('mistakes').filter(m=>m.topic===k&&!m.redone).length};
+}
+let openTopics=new Set();
+function vProgress(){
+  const rows=Object.keys(TOPICS).map(topicStats);
+  const total=rows.reduce((a,r)=>a+r.total,0), done=rows.reduce((a,r)=>a+r.done,0);
+  const expMods=Math.round(rows.reduce((a,r)=>a+r.total*r.exp,0));
+  const wsum=Object.keys(TOPICS).reduce((a,k)=>a+wMid(k),0);
+  const weighted=rows.reduce((a,r)=>a+r.frac*wMid(r.k),0)/wsum;
+  const gap=done-expMods, hrsTot=arr('sessions').reduce((a,s)=>a+(s.minutes||0),0)/60;
+  const status=!total?'':gap>=0?`<span class="pill good">${gap?gap+' module'+(gap===1?'':'s')+' ahead':'On schedule'}</span>`:`<span class="pill ${gap>=-2?'warn':'bad'}">${-gap} module${gap===-1?'':'s'} behind</span>`;
+  return `<header><div class="eyebrow">First pass through the curriculum</div><h1>Progress</h1><p class="sub">Tick modules off as you finish them, here or at the end of a session. The marker on each bar shows where the plan says you should be today.</p></header>
+  <div class="stats">
+    <div class="stat"><b class="num">${total?Math.round(done/total*100):0}%</b><span>${done} of ${total} modules done</span></div>
+    <div class="stat"><b class="num">${Math.round(weighted*100)}%</b><span>of exam weight covered</span></div>
+    <div class="stat"><b class="num">${expMods}</b><span>modules planned by today</span></div>
+    <div class="stat"><b class="num">${hrsTot.toFixed(1)}</b><span>hours studied</span></div></div>
+  <section class="panel"><div class="panel-h"><h2>By topic</h2>${status}</div>
+  <div class="tbl"><table><thead><tr><th>Topic</th><th style="width:32%">Modules</th><th>Hours</th><th>Quiz avg</th><th>Cards</th><th>Open misses</th></tr></thead><tbody>
+  ${rows.map(r=>{const behind=r.frac+1e-9<r.exp-0.15;return `<tr><td><b>${esc(TOPICS[r.k].short)}</b><div style="font-size:12px;color:var(--muted)">${TOPICS[r.k].w}</div></td>
+    <td><div style="display:flex;align-items:center;gap:8px"><div class="bar ${behind?'warn':''}" style="flex:1;position:relative;overflow:visible"><i style="width:${r.frac*100}%"></i>${r.exp>0&&r.exp<1||r.exp===1&&r.frac<1?`<span title="Planned by today" style="position:absolute;top:-3px;bottom:-3px;left:calc(${r.exp*100}% - 1px);width:2px;background:var(--ink);border-radius:1px"></span>`:''}</div><span class="num" style="font-size:12.5px;white-space:nowrap">${r.done}/${r.total}</span></div></td>
+    <td class="num">${(r.mins/60).toFixed(1)}</td><td class="num">${r.avg==null?'—':`<span class="pill ${r.avg>=65?'good':r.avg>=55?'warn':'bad'}">${r.avg}%</span>`}</td><td class="num">${r.cards}</td><td class="num">${r.open}</td></tr>`}).join('')}
+  </tbody></table></div></section>
+  <section class="panel"><div class="panel-h"><h2>Modules</h2><span class="sub" style="font-size:12.5px">Rename or add modules to match Schweser exactly</span></div>
+  <div class="list">${rows.map(r=>`<details class="li" style="display:block" data-topic="${r.k}" ${openTopics.has(r.k)?'open':''}>
+    <summary style="display:flex;gap:10px;align-items:center;color:var(--ink)"><b class="grow">${esc(TOPICS[r.k].name)}</b><span class="num" style="color:var(--muted)">${r.done}/${r.total}</span></summary>
+    <div style="padding:8px 0 4px;display:flex;flex-direction:column;gap:2px">
+    ${mods(r.k).map(m=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0"><label class="chk grow"><input type="checkbox" data-act="moddone" data-topic="${r.k}" data-id="${m.id}" ${m.done?'checked':''}><span style="${m.done?'color:var(--muted);text-decoration:line-through':''}">${esc(m.name)}</span></label>${m.doneOn?`<span class="pill num">${fmt(m.doneOn)}</span>`:''}<button class="ghost small" data-act="modmove" data-dir="-1" data-topic="${r.k}" data-id="${m.id}" aria-label="Move up">↑</button><button class="ghost small" data-act="modmove" data-dir="1" data-topic="${r.k}" data-id="${m.id}" aria-label="Move down">↓</button><button class="ghost small" data-act="moddel" data-topic="${r.k}" data-id="${m.id}" aria-label="Remove module">✕</button></div>`).join('')}
+    <div class="row" style="margin-top:6px"><label>Add a module<input id="modAdd_${r.k}" placeholder="Module name as it appears in Schweser"></label><div class="fit"><button class="small" data-act="modadd" data-topic="${r.k}">Add</button></div></div>
+    </div></details>`).join('')}</div></section>`;
+}
+async function saveMods(k,items){await put('modules',k,{items})}
+
+function vSession(){
+  if(!run){
+    if(!setup.touched)setup.topic=topicFromBlock(blockFor(todayISO()));
+    const tpl=TEMPLATES[setup.tpl];
+    const steps=tpl.build(setup.topic);
+    const total=steps.reduce((a,s)=>a+s.m,0);
+    return `<header><div class="eyebrow">New session</div><h1>Plan your session</h1><p class="sub">Pick a template and topic. The steps and timer adapt to how familiar the topic is.</p></header>
+    <section class="panel"><h2 style="margin-bottom:10px">Template</h2><div class="tpl">
+      ${Object.entries(TEMPLATES).map(([k,t])=>`<button data-act="tpl" data-k="${k}" aria-pressed="${k===setup.tpl}"><b>${esc(t.name)}</b><span>${esc(t.desc)}</span></button>`).join('')}
+    </div></section>
+    <section class="panel"><div class="row">
+      <label>Topic<select id="sTopic">${Object.entries(TOPICS).map(([k,t])=>`<option value="${k}" ${k===setup.topic?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>
+      <label>Module<select id="sModSel">${(()=>{const it=mods(setup.topic);const firstOpen=it.find(m=>!m.done);const sel=setup.moduleId==='__other'?'':(setup.moduleId||firstOpen?.id||'');return it.map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${m.done?'✓ ':''}${esc(m.name)}</option>`).join('')+`<option value="" ${sel===''?'selected':''}>Other or several modules</option>`})()}</select></label>
+      <label>Note on what you're covering (optional)<input id="sModule" placeholder="e.g. second half, examples 4–7" value="${esc(setup.module)}"></label>
+    </div>
+    <p class="sub" style="margin-top:10px">${esc(TOPICS[setup.topic].name)} · ${esc(FAM[TOPICS[setup.topic].fam])} · exam weight ${esc(TOPICS[setup.topic].w)}</p></section>
+    <section class="panel"><div class="panel-h"><h2>Steps</h2><span class="num">${total} min</span></div>
+      <div class="list">${steps.map((s,i)=>`<div class="li"><span class="pill acc num">${i+1}</span><div class="grow"><b>${esc(s.t)}</b><div class="meta">${esc(s.why)}</div></div><span class="num">${s.m}m</span></div>`).join('')}</div>
+      <div style="margin-top:14px"><button class="primary" data-act="begin">Start ${total}-minute session</button></div>
+    </section>`;
+  }
+  if(run.finished) return vFinish();
+  const st=run.steps[run.i];
+  return `<header><div class="eyebrow">${esc(TEMPLATES[run.tpl].name)} · ${esc(TOPICS[run.topic].short)}${run.module?' · '+esc(run.module):''}</div>
+    <h1>${esc(st.t)}</h1></header>
+  <div class="runner">
+    <section class="panel"><div class="steps" role="list">${run.steps.map((s,i)=>`<button class="step ${i===run.i?'on':''} ${i<run.i?'done':''}" data-act="goto" data-i="${i}"><span class="dot">${i<run.i?'✓':i+1}</span>${esc(s.t)}<span class="m">${s.m}m</span></button>`).join('')}</div>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">Elapsed <span class="num">${Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60)}</span> of ${run.steps.reduce((a,s)=>a+s.m,0)} min</div></section>
+    <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
+      <section class="panel" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="clock" id="clock">${st.m}:00</div>
+          <div class="ctrl">
+            <button data-act="pause">${run.paused?'Resume':'Pause'}</button>
+            <button class="primary" data-act="nextstep">${run.i===run.steps.length-1?'Finish':'Next step'}</button>
+          </div>
+        </div>
+        <ul class="guide">${st.guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ul>
+        <div class="why">${esc(st.why)}</div>
+      </section>
+      ${stepBody(st)}
+      ${scratchPanel(st)}
+      <div><button class="ghost small" data-act="abandon">Discard this session</button></div>
+    </div>
+  </div>`;
+}
+function stepBody(st){
+  const d=run.data;
+  if(st.type==='blurt') return `<section class="panel"><div class="grid2">
+    <label>From memory, notes closed<textarea id="fBlurt" data-bind="blurt" placeholder="Key ideas, formulas, distinctions…">${esc(d.blurt||'')}</textarea></label>
+    <label>Gaps after checking (one per line)<textarea id="fGaps" data-bind="gaps" placeholder="What you missed or got wrong…">${esc(d.gaps||'')}</textarea></label></div></section>`;
+  if(st.type==='quiz'){
+    const topic=st.forceTopic||run.topic; const q=d.quizzes.find(x=>x.step===st.id)||{n:'',c:''};
+    return `<section class="panel"><div class="panel-h"><h2>Score</h2><span class="pill">${esc(TOPICS[topic].short)}</span></div>
+      <div class="row"><label>Questions<input id="q_n_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="n" value="${q.n}"></label>
+      <label>Correct<input id="q_c_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="c" value="${q.c}"></label>
+      <div class="fit" style="padding-bottom:8px"><span class="num" style="font-size:20px;font-weight:600">${q.n?pct(q.c,q.n)+'%':'—'}</span></div></div></section>
+      ${mistakeForm(topic)}`;
+  }
+  if(st.type==='capture'){
+    const gaps=captureLines();
+    return `<section class="panel"><h2 style="margin-bottom:10px">Formulas for the ${esc(TOPICS[run.topic].short)} sheet</h2>
+      <textarea id="fForm" class="mono" data-bind="formulas" placeholder="One per line, e.g. FV = PV × (1 + r)^n">${esc(d.formulas||'')}</textarea>
+      <p class="sub" style="font-size:12.5px">Added to your formula sheet in Notes when you finish.</p></section>
+    <section class="panel"><div class="panel-h"><h2>Flashcards</h2><span class="pill">${d.cards.length} added</span></div>
+      ${gaps.length?`<p class="sub" style="margin:0 0 8px;font-size:13px">From your gaps and parking lot, tap to use as the front:</p><div class="row" style="gap:6px;margin-bottom:10px">${gaps.map((g,i)=>`<button class="small fit" data-act="gapfront" data-i="${i}">${esc(g.length>48?g.slice(0,46)+'…':g)}</button>`).join('')}</div>`:''}
+      ${cardForm('run')}
+      ${d.cards.length?`<div class="list" style="margin-top:10px">${d.cards.map(c=>`<div class="li"><div class="grow"><b>${esc(c.front)}</b><div class="meta">${esc(c.back)}</div></div></div>`).join('')}</div>`:''}
+    </section>
+    ${d.mistakes.length?`<section class="panel"><h2>Logged this session</h2><div class="list">${d.mistakes.map(m=>`<div class="li"><span class="pill warn">${TAGS[m.tag]}</span><div class="grow">${esc(m.qid||'Question')} — ${esc(m.why)}</div></div>`).join('')}</div></section>`:''}`;
+  }
+  if(st.type==='cards'){
+    const done=ankiDone(todayISO());
+    return `<section class="panel" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><p style="margin:0">${done?'Anki reviews done for today. Move on to the next step.':'Open Anki on your phone and clear today\u2019s reviews. The session timer keeps running.'}</p><button data-act="anki" ${done?'':'class="primary"'}>${done?'Undo':'Mark Anki done'}</button></section>`;
+  }
+  if(st.type==='redo'){
+    const ws=addDays(todayISO(),-7);
+    const ms=arr('mistakes').filter(m=>!m.redone).sort((a,b)=>a.date<b.date?-1:1);
+    return `<section class="panel"><div class="panel-h"><h2>Open mistakes</h2><span class="pill">${ms.length}</span></div>
+    ${ms.length?`<div class="list">${ms.map(m=>`<div class="li"><label class="chk"><input type="checkbox" data-act="redone" data-id="${m.id}"> </label><div class="grow"><b>${esc(m.qid||'Question')}</b> · ${esc(TOPICS[m.topic]?.short||'')} <span class="pill ${m.date>=ws?'acc':''}">${fmt(m.date)}</span><div class="meta">${esc(m.why)}${m.rule?' → '+esc(m.rule):''}</div></div><span class="pill warn">${TAGS[m.tag]}</span></div>`).join('')}</div>`:'<div class="empty">Nothing to redo. Mistakes you log during quizzes appear here.</div>'}</section>`;
+  }
+  if(st.type==='formula'){
+    return `<section class="panel"><div class="row"><label>Topic<select id="fsTopic">${Object.entries(TOPICS).map(([k,t])=>`<option value="${k}" ${k===(run.data.fsTopic||run.topic)?'selected':''}>${esc(t.short)}</option>`).join('')}</select></label></div>
+      <label style="margin-top:10px">Write it from memory<textarea id="fsRecall" class="mono" data-bind="fsRecall">${esc(run.data.fsRecall||'')}</textarea></label>
+      <details style="margin-top:10px"><summary>Compare with your sheet</summary><pre class="mono" style="white-space:pre-wrap;font-family:var(--mono);font-size:13px;background:var(--bg);padding:12px;border-radius:8px">${esc(S.notes[run.data.fsTopic||run.topic]?.formulas||'No formulas saved for this topic yet.')}</pre></details></section>`;
+  }
+  return '';
+}
+function captureLines(){
+  const d=run.data;
+  return [...(d.gaps||'').split('\n'),...(d.scratch||'').split('\n')].map(s=>s.trim()).filter(Boolean);
+}
+function scratchPanel(st){
+  if(st.type==='blurt') return `<section class="panel"><div class="empty">Your parking lot is hidden during this step so you recall from memory, not from your jottings. It comes back in Capture.</div></section>`;
+  if(!['text','quiz'].includes(st.type)||/break/i.test(st.t)) return '';
+  return `<section class="panel"><div class="panel-h"><h2>Parking lot</h2><span class="sub" style="font-size:12.5px">Questions, confusions and formulas only, one per line</span></div>
+    <textarea id="fScratch" data-bind="scratch" style="min-height:90px" placeholder="e.g. Why is FIFO COGS lower when prices rise?&#10;PV of perpetuity = PMT / r">${esc(run.data.scratch||'')}</textarea>
+    <p class="sub" style="font-size:12.5px;margin-top:6px">Don’t summarise the notes here. Each line becomes a flashcard or formula in Capture.</p></section>`;
+}
+function mistakeForm(topic){
+  return `<section class="panel"><h2 style="margin-bottom:10px">Log a miss</h2>
+  <div class="row"><label>Question ID<input id="mQid" placeholder="e.g. Q1043"></label>
+  <label>Reason<select id="mTag">${Object.entries(TAGS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label></div>
+  <div class="row" style="margin-top:8px"><label>Why you got it wrong<input id="mWhy" placeholder="e.g. used annual instead of semi-annual periods"></label></div>
+  <div class="row" style="margin-top:8px"><label>Rule to remember<input id="mRule" placeholder="e.g. bonds: N = years × 2, I/Y = YTM ÷ 2"></label>
+  <div class="fit"><button data-act="addmistake" data-topic="${topic}">Log it</button></div></div></section>`;
+}
+function cardForm(ctx){
+  return `<div class="row"><label>Front<input id="cFront_${ctx}" placeholder="Question or prompt"></label>
+  <label>Back<input id="cBack_${ctx}" placeholder="Answer"></label>
+  <div class="fit"><button data-act="addcard" data-ctx="${ctx}">Add card</button></div></div>`;
+}
+function vFinish(){
+  const mins=Math.max(1,Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60));
+  const qs=run.data.quizzes.filter(q=>q.n);
+  return `<header><div class="eyebrow">Session complete</div><h1>${mins} minutes on ${esc(TOPICS[run.topic].short)}</h1></header>
+  <section class="panel"><div class="stats" style="margin-bottom:14px">
+    <div class="stat"><b>${mins}</b><span>minutes</span></div>
+    <div class="stat"><b>${qs.length?pct(qs.reduce((a,q)=>a+q.c,0),qs.reduce((a,q)=>a+q.n,0))+'%':'—'}</b><span>quiz score</span></div>
+    <div class="stat"><b>${run.data.cards.length}</b><span>new cards</span></div>
+    <div class="stat"><b>${run.data.mistakes.length}</b><span>mistakes logged</span></div></div>
+    <label>How focused were you?<select id="fFocus"><option value="">Skip</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n} — ${['','Distracted','Patchy','OK','Mostly focused','Locked in'][n]}</option>`).join('')}</select></label>
+    ${run.moduleId&&mods(run.topic).find(m=>m.id===run.moduleId)?`<label class="chk" style="margin-top:12px"><input type="checkbox" id="fModDone" ${mods(run.topic).find(m=>m.id===run.moduleId).done||run.tpl!=='module'?'':'checked'}> Mark “${esc(mods(run.topic).find(m=>m.id===run.moduleId).name)}” complete</label>`:''}
+    <label style="margin-top:10px">Note for next time<input id="fNote" placeholder="e.g. Start with the video next time on this topic"></label>
+    <div class="ctrl" style="margin-top:14px"><button class="primary" data-act="savesession">Save session</button><button data-act="backto">Back to steps</button></div></section>`;
+}
+
+let planOpen=false;
+function planEditor(){
+  const p=planCfg(),tot=p.order.reduce((a,k)=>a+(p.weeks[k]||1),0),rv=BLOCKS.find(b=>b.k==='review'),rvW=Math.round((diffDays(rv.s,rv.e)+1)/7);
+  const warn=rv.e>REVIEW_END?`<span class="pill bad">Learning runs into the review phase</span>`:rvW<3?`<span class="pill warn">Only ${rvW} week${rvW===1?'':'s'} of review</span>`:`<span class="pill good">${tot} weeks of learning · ${rvW} of review</span>`;
+  return `<section class="panel"><details ${planOpen?'open':''} id="planEd"><summary style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><h2 style="color:var(--ink)">Topic order and weeks</h2>${warn}</summary>
+  <p class="sub" style="font-size:13px;margin:10px 0">Move topics to match the order you study in. Dates, sessions and revisits update automatically.</p>
+  <div class="ctrl" style="margin-bottom:10px"><button class="small" data-act="planpreset" data-p="schweser">Use Schweser order</button><button class="small" data-act="planpreset" data-p="default">Use Ethics-first order</button></div>
+  <div class="list">${p.order.map((k,i)=>{const b=BLOCKS.find(x=>x.k===k);return `<div class="li" style="flex-wrap:wrap"><span class="pill num">${i+1}</span><div class="grow"><b>${esc(TOPICS[k].name)}</b><div class="meta">${fmt(b.s)} – ${fmt(b.e)}</div></div>
+    <div class="ctrl" style="align-items:center;gap:4px"><button class="ghost small" data-act="planweeks" data-k="${k}" data-d="-1" aria-label="Fewer weeks" ${(p.weeks[k]||1)<=1?'disabled':''}>−</button><span class="num" style="min-width:52px;text-align:center">${p.weeks[k]||1} wk</span><button class="ghost small" data-act="planweeks" data-k="${k}" data-d="1" aria-label="More weeks">+</button>
+    <button class="ghost small" data-act="planmove" data-i="${i}" data-d="-1" aria-label="Move up" ${i===0?'disabled':''}>↑</button><button class="ghost small" data-act="planmove" data-i="${i}" data-d="1" aria-label="Move down" ${i===9?'disabled':''}>↓</button></div></div>`}).join('')}</div>
+  </details></section>`;
+}
+async function savePlan(p){planOpen=true;await put('settings','plan',p);forceRender()}
+function vPlan(){
+  const t=todayISO(), mw=minutesByWeek();
+  const weeks=[];for(let w='2026-11-02';w<='2027-05-10';w=addDays(w,7))weeks.push(w);
+  const total=Object.values(mw).reduce((a,b)=>a+b,0)/60;
+  const plannedSoFar=weeks.filter(w=>addDays(w,6)<t).reduce((a,w)=>a+weekTarget(w),0);
+  const loggedSoFar=weeks.filter(w=>addDays(w,6)<t).reduce((a,w)=>a+(mw[w]||0)/60,0);
+  return `<header><div class="eyebrow">Nov 2, 2026 – May 17, 2027</div><h1>Study plan</h1><p class="sub">Learning finishes ${fmt(learnEnd())}, then ${Math.round((diffDays(BLOCKS.find(b=>b.k==='review').s,BLOCKS.find(b=>b.k==='review').e)+1)/7)} weeks of review and 4 of mocks.</p></header>
+  ${planEditor()}
+  <div class="stats"><div class="stat"><b class="num">${total.toFixed(1)}</b><span>hours logged</span></div>
+  <div class="stat"><b class="num">${plannedSoFar?Math.round(loggedSoFar/plannedSoFar*100)+'%':'—'}</b><span>of target, finished weeks</span></div>
+  <div class="stat"><b class="num">${weeks.reduce((a,w)=>a+weekTarget(w),0).toFixed(0)}</b><span>hours planned</span></div>
+  <div class="stat"><b class="num">${diffDays(t,EXAM)}</b><span>days left</span></div></div>
+  <section class="panel"><h2 style="margin-bottom:8px">Blocks</h2><div class="tbl"><table><thead><tr><th>Block</th><th>Dates</th><th>Weight</th><th>Status</th></tr></thead><tbody>
+  ${BLOCKS.map(b=>{const st=t>b.e?'done':t>=b.s?'now':'next';return `<tr class="${st==='now'?'now':''}"><td><b>${esc(blockName(b))}</b>${b.note?`<div class="meta" style="font-size:12px;color:var(--muted)">${esc(b.note)}</div>`:''}</td><td class="num" style="white-space:nowrap">${fmt(b.s)} – ${fmt(b.e)}</td><td>${TOPICS[b.k]?esc(TOPICS[b.k].w):''}</td><td><span class="pill ${st==='done'?'good':st==='now'?'acc':''}">${st==='done'?'Done':st==='now'?'Current':'Upcoming'}</span></td></tr>`}).join('')}
+  </tbody></table></div></section>
+  <section class="panel"><h2 style="margin-bottom:8px">Weekly hours</h2><div class="tbl"><table><thead><tr><th>Week of</th><th>Focus</th><th>Logged</th><th style="width:30%">vs target</th></tr></thead><tbody>
+  ${weeks.map(w=>{const b=blockFor(addDays(w,3))||blockFor(w);const h=(mw[w]||0)/60,tg=weekTarget(w),cur=t>=w&&t<=addDays(w,6),past=addDays(w,6)<t;return `<tr class="${cur?'now':''}"><td class="num" style="white-space:nowrap">${fmt(w)}</td><td>${esc(b?(TOPICS[b.k]?.short||blockName(b)):'')}</td><td class="num" style="white-space:nowrap">${hrs(h*60)} / ${tg}h</td><td><div class="bar ${past&&h<tg*0.8?'warn':''}"><i style="width:${Math.min(100,tg?h/tg*100:0)}%"></i></div></td></tr>`}).join('')}
+  </tbody></table></div></section>
+  <section class="panel"><div class="panel-h"><h2>Topic revisits</h2><span class="sub" style="font-size:12.5px">1, 3 and 8 weeks after each topic finishes</span></div>
+  <p class="sub" style="margin:-4px 0 10px;font-size:13px">A drop of up to 10 points from the original score is normal. More than that means one extra session on the topic before its next revisit.</p>
+  ${(()=>{const all=revisits(),due=all.filter(r=>!r.score&&r.date<=addDays(t,6)),later=all.filter(r=>!r.score&&r.date>addDays(t,6)),logged=all.filter(r=>r.score);
+  return `${due.length?`<h3 style="margin:4px 0 4px">Due now</h3>${revisitRows(due,true)}`:'<div class="empty">No revisits due this week.</div>'}
+  ${logged.length?`<h3 style="margin:14px 0 4px">Logged</h3>${revisitRows(logged,false)}`:''}
+  <details style="margin-top:12px"><summary>Upcoming (${later.length})</summary>${revisitRows(later,false)}</details>`})()}</section>
+  <section class="panel"><h2 style="margin-bottom:8px">Checkpoints</h2><div class="list">${checkpoints().map(c=>`<div class="li"><span class="pill ${t>c.d?'':'acc'} num">${fmt(c.d)}</span><span class="grow">${esc(c.t)}</span></div>`).join('')}
+  <div class="li"><span class="pill num">Each topic</span><span class="grow">65%+ on that topic’s test before moving on; below that, add one extra session.</span></div></div></section>`;
+}
+
+let review={cards:null,i:0,flip:false}, cardFilter='all', showAdded=false;
+function ankiText(list){return list.map(c=>[c.front,c.back,'cfa '+(c.topic||'')].map(s=>String(s||'').replace(/[\t\r\n]+/g,' ').trim()).join('\t')).join('\n')}
+function vCards(){
+  const t=todayISO(), done=ankiDone(t), pend=pendingCards(), all=arr('cards');
+  const shown=(showAdded?all:pend).filter(c=>cardFilter==='all'||c.topic===cardFilter);
+  const days=[];for(let i=27;i>=0;i--)days.push(addDays(t,-i));
+  return `<header><div class="eyebrow">Spaced repetition</div><h1>Anki</h1><p class="sub">Do your reviews in Anki on your phone. Capture cards here during sessions, then send them to Anki in one import.</p></header>
+  <section class="panel next" style="flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap">
+    <div><div class="eyebrow">Today</div><h2>${done?'Anki reviews done':'Anki reviews not done yet'}</h2><p>${ankiStreak()} day streak · about 10 minutes a day, rest days included</p></div>
+    <button data-act="anki">${done?'Undo':'Mark done'}</button></section>
+  <section class="panel"><div class="panel-h"><h2>Last 4 weeks</h2><span class="sub" style="font-size:12.5px">${days.filter(ankiDone).length} of 28 days</span></div>
+    <div style="display:grid;grid-template-columns:repeat(14,1fr);gap:4px;max-width:520px">${days.map(d=>`<span title="${fmt(d)}" style="aspect-ratio:1;border-radius:3px;background:${ankiDone(d)?'var(--accent)':'var(--sunk)'};${d===t?'outline:2px solid var(--ink);outline-offset:1px':''}"></span>`).join('')}</div></section>
+  <section class="panel"><div class="panel-h"><h2>Cards to add to Anki <span class="num" style="color:var(--muted);font-weight:500">${pend.length}</span></h2>
+    <div class="ctrl"><button class="small" data-act="ankicopy" ${pend.length?'':'disabled'}>Copy</button><button class="small" data-act="ankidl" ${pend.length?'':'disabled'}>Download .txt</button><button class="small primary" data-act="ankiadded" ${pend.length?'':'disabled'}>Mark all as added</button></div></div>
+    <details style="margin-bottom:10px"><summary>How to import</summary><ol class="guide" style="margin-top:8px;font-size:13.5px">
+      <li>Download the .txt file, or copy and paste into a plain text file.</li>
+      <li>In Anki on your computer: File → Import, choose the file. Fields are separated by tabs: Front, Back, Tags.</li>
+      <li>Pick your CFA deck and the Basic note type, then Import. Sync, and the cards appear on your phone.</li>
+      <li>Come back and press Mark all as added.</li></ol></details>
+    <div class="row" style="margin-bottom:8px"><label>Topic for new card<select id="cTopic">${Object.entries(TOPICS).map(([k,v])=>`<option value="${k}" ${k===topicFromBlock(blockFor(t))?'selected':''}>${esc(v.short)}</option>`).join('')}</select></label></div>
+    ${cardForm('page')}
+    <div class="panel-h" style="margin:16px 0 0"><label class="chk"><input type="checkbox" id="cShowAdded" ${showAdded?'checked':''}> Show cards already in Anki</label>
+    <select id="cFilter" style="width:auto"><option value="all">All topics</option>${Object.entries(TOPICS).map(([k,v])=>`<option value="${k}" ${k===cardFilter?'selected':''}>${esc(v.short)}</option>`).join('')}</select></div>
+    ${shown.length?`<div class="list" style="margin-top:6px">${shown.map(c=>`<div class="li"><div class="grow"><b>${esc(c.front)}</b><div class="meta">${esc(c.back)}</div></div><span class="pill">${esc(TOPICS[c.topic]?.short||'')}</span>${c.added?'<span class="pill good">In Anki</span>':''}<button class="ghost small" data-act="delcard" data-id="${c.id}" aria-label="Delete card">✕</button></div>`).join('')}</div>`
+    :`<div class="empty" style="margin-top:6px">${pend.length||!showAdded?'Nothing waiting. Cards you make in a session’s Capture step queue up here.':'No cards yet.'}</div>`}
+  </section>
+  <section class="panel"><h2 style="margin-bottom:8px">Good cards</h2><div class="grid2" style="gap:8px 24px;font-size:14px">
+    <div><b>One fact per card.</b> Split lists into several cards.</div><div><b>Recall, not recognition.</b> Ask for the formula, don’t show it.</div>
+    <div><b>Make cards from misses.</b> Blurt gaps, Key Concepts you missed, QBank formula errors.</div><div><b>Rate honestly.</b> Hesitated or partly wrong means Again.</div></div></section>`;
+}
+
+let mFilter={tag:'all',open:true};
+function vMistakes(){
+  const all=arr('mistakes');
+  const list=all.filter(m=>(mFilter.tag==='all'||m.tag===mFilter.tag)&&(!mFilter.open||!m.redone)).sort((a,b)=>a.date<b.date?1:-1);
+  const counts=Object.keys(TAGS).map(k=>[k,all.filter(m=>m.tag===k).length]);
+  const tot=all.length||1;
+  return `<header><div class="eyebrow">Error log</div><h1>Mistakes</h1><p class="sub">The reason you missed a question tells you how to fix it. Redo open ones on Sundays.</p></header>
+  <div class="stats">${counts.map(([k,n])=>`<div class="stat"><b class="num">${n}</b><span>${TAGS[k]} · ${Math.round(n/tot*100)}%</span><div style="font-size:12px;color:var(--muted)">${TAG_FIX[k]}</div></div>`).join('')}</div>
+  ${mistakeForm(topicFromBlock(blockFor(todayISO())))}
+  <section class="panel"><div class="panel-h"><h2>Log</h2><div class="tabs">
+    ${[['all','All'],...Object.entries(TAGS)].map(([k,l])=>`<button class="small" data-act="mtag" data-k="${k}" aria-pressed="${mFilter.tag===k}">${l}</button>`).join('')}
+    <label class="chk" style="margin-left:6px"><input type="checkbox" id="mOpen" ${mFilter.open?'checked':''}> Open only</label></div></div>
+    ${list.length?`<div class="list">${list.map(m=>`<div class="li"><label class="chk"><input type="checkbox" data-act="redone" data-id="${m.id}" ${m.redone?'checked':''} aria-label="Redone"></label><div class="grow"><b>${esc(m.qid||'Question')}</b> · ${esc(TOPICS[m.topic]?.short||'')} · <span class="meta">${fmt(m.date)}</span><div class="meta">${esc(m.why)}${m.rule?' → <b>'+esc(m.rule)+'</b>':''}</div></div><span class="pill warn">${TAGS[m.tag]}</span><button class="ghost small" data-act="delmistake" data-id="${m.id}" aria-label="Delete">✕</button></div>`).join('')}</div>`
+    :`<div class="empty">${all.length?'Nothing matches this filter.':'No mistakes logged yet. Log misses during a session’s quiz step or here.'}</div>`}</section>`;
+}
+
+function vScores(){
+  const rows=Object.keys(TOPICS).map(k=>{const r=topicQuiz(k);const last=r.slice(-5);const avg=last.length?Math.round(last.reduce((a,x)=>a+x.p,0)/last.length):null;return {k,avg,n:r.length,last:r.at(-1)}});
+  const mocks=arr('scores').filter(s=>s.type==='mock').sort((a,b)=>a.date<b.date?-1:1);
+  arr('sessions').filter(s=>s.tpl==='mock').forEach(s=>(s.quizzes||[]).forEach(q=>q.n&&mocks.push({date:s.date,pct:pct(q.c,q.n),label:'Mock (session)'})));
+  return `<header><div class="eyebrow">Readiness</div><h1>Scores</h1><p class="sub">Average of your last five quizzes and tests per topic, against the 65% target. Quiz scores from sessions are included automatically.</p></header>
+  <section class="panel"><h2 style="margin-bottom:8px">By topic</h2><div class="tbl"><table><thead><tr><th>Topic</th><th>Weight</th><th>Recent avg</th><th style="width:28%">vs 65%</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr><td><b>${esc(TOPICS[r.k].name)}</b><div style="font-size:12px;color:var(--muted)">${r.n} score${r.n===1?'':'s'}</div></td><td>${TOPICS[r.k].w}</td><td class="num">${r.avg==null?'—':r.avg+'%'}</td>
+  <td>${r.avg==null?'':`<div class="bar ${r.avg<65?'warn':''}"><i style="width:${r.avg}%"></i></div>`}</td>
+  <td><span class="pill ${r.avg==null?'':r.avg>=70?'good':r.avg>=65?'acc':r.avg>=55?'warn':'bad'}">${r.avg==null?'No data':r.avg>=70?'Strong':r.avg>=65?'On target':r.avg>=55?'Close':'Needs work'}</span></td></tr>`).join('')}
+  </tbody></table></div></section>
+  <section class="panel"><h2 style="margin-bottom:10px">Add a score</h2>
+  <div class="row"><label>Type<select id="scType"><option value="test">Topic test</option><option value="quiz">Quiz</option><option value="checkpoint">Checkpoint exam</option><option value="mock">Mock exam</option></select></label>
+  <label>Topic<select id="scTopic"><option value="">Mixed / all</option>${Object.entries(TOPICS).map(([k,t])=>`<option value="${k}">${esc(t.short)}</option>`).join('')}</select></label>
+  <label>Date<input id="scDate" type="date" value="${todayISO()}"></label></div>
+  <div class="row" style="margin-top:8px"><label>Correct<input id="scC" type="number" min="0" inputmode="numeric"></label><label>Out of<input id="scN" type="number" min="1" inputmode="numeric"></label><div class="fit"><button data-act="addscore">Add score</button></div></div></section>
+  <section class="panel"><div class="panel-h"><h2>Mocks</h2><span class="sub" style="font-size:13px">Targets: 60% · 65% · 70%</span></div>
+  ${mocks.length?`<div class="list">${mocks.map((m,i)=>`<div class="li"><span class="pill num">${fmt(m.date)}</span><span class="grow">Mock ${i+1}</span><b class="num">${m.pct}%</b><span class="pill ${m.pct>=[60,65,70][Math.min(i,2)]?'good':'warn'}">${m.pct>=[60,65,70][Math.min(i,2)]?'Hit target':'Below target'}</span></div>`).join('')}</div>`
+  :'<div class="empty">Mock scores appear here from April 17. Log them with the form above or by running a Mock exam session.</div>'}</section>
+  ${arr('scores').length?`<section class="panel"><h2 style="margin-bottom:8px">All scores</h2><div class="list">${arr('scores').sort((a,b)=>a.date<b.date?1:-1).map(s=>`<div class="li"><span class="pill num">${fmt(s.date)}</span><span class="grow">${esc({test:'Topic test',quiz:'Quiz',checkpoint:'Checkpoint',mock:'Mock',revisit:'Revisit '+(s.rev||'')}[s.type])} · ${esc(TOPICS[s.topic]?.short||'Mixed')}</span><b class="num">${s.pct}%</b><button class="ghost small" data-act="delscore" data-id="${s.id}" aria-label="Delete">✕</button></div>`).join('')}</div></section>`:''}`;
+}
+
+let noteTopic=null, testMode=false;
+function vNotes(){
+  noteTopic=noteTopic||topicFromBlock(blockFor(todayISO()));
+  return `<header><div class="eyebrow">Your sheets</div><h1>Notes</h1><p class="sub">One formula sheet and a short notes page per topic. Don’t copy the SchweserNotes out; keep only what you’d forget.</p></header>
+  <div class="tabs">${Object.entries(TOPICS).map(([k,t])=>`<button class="small" data-act="ntopic" data-k="${k}" aria-pressed="${k===noteTopic}">${esc(t.short)}</button>`).join('')}</div>
+  <section class="panel"><div class="panel-h"><h2>Formula sheet · ${esc(TOPICS[noteTopic].short)}</h2>
+    <button class="small" data-act="testmode">${testMode?'Show sheet':'Test me'}</button></div>
+    ${testMode?`<label>Write the sheet from memory, then press Show sheet to compare<textarea id="nRecall" class="mono" style="min-height:220px"></textarea></label>`
+    :`<textarea id="nFormulas" class="mono" style="min-height:220px" data-note="formulas" placeholder="One formula per line. Session Capture steps add to this automatically."></textarea>`}</section>
+  <section class="panel"><h2 style="margin-bottom:10px">Notes · ${esc(TOPICS[noteTopic].short)}</h2>
+    <textarea id="nNotes" style="min-height:200px" data-note="notes" placeholder="Distinctions, traps and rules you keep getting wrong."></textarea>
+    <p class="sub" style="font-size:12.5px;margin-top:6px" id="nSaved">Saves as you type.</p></section>`;
+}
+function fillNotes(){const n=S.notes[noteTopic]||{};const f=$('#nFormulas'),t=$('#nNotes');if(f)f.value=n.formulas||'';if(t)t.value=n.notes||''}
+
+/* ---------- actions ---------- */
+function rateCard(c,r){
+  let iv=c.interval||0, e=c.ease||2.5, t=todayISO();
+  if(r==='again'){iv=0;e=Math.max(1.3,e-.2)}
+  else if(r==='hard'){iv=Math.max(1,Math.round(iv*1.2));e=Math.max(1.3,e-.15)}
+  else if(r==='good'){iv=iv<1?1:iv<3?3:Math.round(iv*e)}
+  else {iv=Math.round((iv<1?1:iv<3?3:iv*e)*1.3);e+=.15}
+  const {id,...rest}=c;
+  return {id,data:{...rest,interval:iv,ease:+e.toFixed(2),due:addDays(t,iv),reps:(c.reps||0)+1,last:t}};
+}
+function newCard(front,back,topic){return {front,back,topic,interval:0,ease:2.5,due:todayISO(),reps:0,created:todayISO()}}
+
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]'); if(!b)return;
+  const a=b.dataset.act;
+  if(a==='quickstart'){ if(!run){setup.tpl=b.dataset.tpl;setup.topic=b.dataset.topic;setup.moduleId='';setup.touched=true} location.hash='session'; }
+  else if(a==='tpl'){setup.tpl=b.dataset.k;forceRender()}
+  else if(a==='begin'){
+    setup.module=$('#sModule').value.trim();
+    const mid=$('#sModSel')?.value||'', mobj=mods(setup.topic).find(m=>m.id===mid);
+    run={tpl:setup.tpl,topic:setup.topic,moduleId:mid,module:[mobj?.name,setup.module].filter(Boolean).join(' · '),steps:TEMPLATES[setup.tpl].build(setup.topic),i:0,started:Date.now(),stepStart:Date.now(),elapsed:[],data:{blurt:'',gaps:'',quizzes:[],mistakes:[],cards:[],formulas:''}};
+    saveRun();keepAwake();startTick();forceRender();
+  }
+  else if(a==='pause'){if(run.paused){run.paused=false;run.stepStart=Date.now()}else{bank();run.paused=true}saveRun();forceRender()}
+  else if(a==='nextstep'||a==='goto'){
+    syncBinds();bank();
+    if(a==='goto')run.i=+b.dataset.i; else if(run.i<run.steps.length-1)run.i++; else {run.finished=true;run.paused=true}
+    run.stepStart=Date.now(); if(!run.finished)run.paused=false; saveRun();forceRender();window.scrollTo(0,0)
+  }
+  else if(a==='backto'){run.finished=false;run.paused=false;run.stepStart=Date.now();saveRun();forceRender()}
+  else if(a==='abandon'){
+    if(b.dataset.sure){run=null;saveRun();forceRender();toast('Session discarded')}
+    else{b.dataset.sure=1;b.textContent='Tap again to discard';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='Discard this session'}},3000)}
+  }
+  else if(a==='savesession'){
+    const mins=Math.max(1,Math.round(run.steps.reduce((x,_,i)=>x+stepElapsed(i),0)/60));
+    const d=run.data, id=uid(), t=todayISO();
+    const doc={date:t,ts:Date.now(),tpl:run.tpl,topic:run.topic,module:run.module,minutes:mins,planned:run.steps.reduce((x,s)=>x+s.m,0),
+      quizzes:d.quizzes.filter(q=>q.n).map(q=>({topic:q.topic,n:+q.n,c:+q.c})),blurt:d.blurt,gaps:d.gaps,focus:+$('#fFocus').value||null,note:$('#fNote').value.trim()};
+    const formulas=(d.formulas||'').trim();
+    const markDone=$('#fModDone')?.checked, modId=run.moduleId;
+    const cards=d.cards.slice(), ms=d.mistakes.slice();
+    run=null;saveRun();clearInterval(tick);try{wake?.release()}catch(_){}
+    location.hash='today';
+    await put('sessions',id,doc);
+    for(const c of cards) await put('cards',uid(),newCard(c.front,c.back,c.topic));
+    for(const m of ms) await put('mistakes',uid(),m);
+    if(markDone&&modId)await saveMods(doc.topic,mods(doc.topic).map(m=>m.id===modId?{...m,done:true,doneOn:t}:m));
+    if(formulas){const n=S.notes[doc.topic]||{};await put('notes',doc.topic,{...n,formulas:((n.formulas||'').trim()+'\n'+formulas).trim()})}
+    toast('Session saved');
+  }
+  else if(a==='addmistake'){
+    const why=$('#mWhy').value.trim(); if(!why){$('#mWhy').focus();toast('Add why you got it wrong');return}
+    const m={date:todayISO(),topic:b.dataset.topic,qid:$('#mQid').value.trim(),tag:$('#mTag').value,why,rule:$('#mRule').value.trim(),redone:false};
+    if(run&&view==='session'){syncBinds();run.data.mistakes.push(m);saveRun();forceRender();toast('Logged — saved when you finish')}
+    else{await put('mistakes',uid(),m);render.force=true;render();toast('Mistake logged')}
+  }
+  else if(a==='gapfront'){const g=captureLines()[+b.dataset.i];const f=$('#cFront_run');f.value=g;$('#cBack_run').focus()}
+  else if(a==='addcard'){
+    const ctx=b.dataset.ctx,f=$('#cFront_'+ctx).value.trim(),bk=$('#cBack_'+ctx).value.trim();
+    if(!f){$('#cFront_'+ctx).focus();return}
+    if(ctx==='run'){syncBinds();run.data.cards.push({front:f,back:bk,topic:run.topic});saveRun();forceRender()}
+    else{await put('cards',uid(),newCard(f,bk,$('#cTopic').value));forceRender();toast('Card added')}
+  }
+  else if(a==='planpreset'){const src=b.dataset.p==='schweser'?SCHWESER_PLAN:DEFAULT_PLAN;await savePlan({order:[...src.order],weeks:{...src.weeks}});toast('Plan reordered')}
+  else if(a==='planmove'){const p=planCfg(),o=[...p.order],i=+b.dataset.i,j=i+ +b.dataset.d;if(j<0||j>9)return;[o[i],o[j]]=[o[j],o[i]];await savePlan({order:o,weeks:{...p.weeks}})}
+  else if(a==='planweeks'){const p=planCfg(),w={...p.weeks},k=b.dataset.k;w[k]=Math.max(1,(w[k]||1)+ +b.dataset.d);await savePlan({order:[...p.order],weeks:w})}
+  else if(a==='modmove'){const k=b.dataset.topic,it=[...mods(k)],i=it.findIndex(m=>m.id===b.dataset.id),j=i+ +b.dataset.dir;if(i<0||j<0||j>=it.length)return;[it[i],it[j]]=[it[j],it[i]];openTopics.add(k);await saveMods(k,it);forceRender()}
+  else if(a==='anki'){await toggleAnki()}
+  else if(a==='ankicopy'){const txt=ankiText(pendingCards());try{await navigator.clipboard.writeText(txt);toast('Copied '+pendingCards().length+' cards')}catch(_){toast('Copy was blocked. Use Download .txt instead.')}}
+  else if(a==='ankidl'){const txt='#separator:tab\n#html:false\n#columns:Front\tBack\tTags\n'+ankiText(pendingCards())+'\n';
+    const url=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));const el=document.createElement('a');el.href=url;el.download='cfa-anki-'+todayISO()+'.txt';document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+  else if(a==='signout'){await signOut()}
+  else if(a==='ankiadded'){const p=pendingCards();for(const c of p){const {id,...rest}=c;await put('cards',id,{...rest,added:true,addedOn:todayISO()})}forceRender();toast(p.length+' cards marked as in Anki')}
+  else if(a==='logrev'){const k=b.dataset.k,n=+b.dataset.n,c=+$('#rvC_'+k+'_'+n).value,o=+$('#rvN_'+k+'_'+n).value;
+    if(!o||c>o||c<0){toast('Enter correct and out of, e.g. 21 of 30');return}
+    await put('scores',uid(),{type:'revisit',rev:n,topic:k,date:todayISO(),c,n:o,pct:pct(c,o)});forceRender();toast('Revisit logged')}
+  else if(a==='delcard'){await del('cards',b.dataset.id);forceRender()}
+  else if(a==='startreview'){review={cards:dueCards().sort(()=>Math.random()-.5),i:0,flip:false};forceRender()}
+  else if(a==='flip'){review.flip=true;forceRender()}
+  else if(a==='rate'){const c=review.cards[review.i];const {id,data}=rateCard(c,b.dataset.r);
+    if(b.dataset.r==='again')review.cards.push({...c,...data,id});
+    review.i++;review.flip=false;await put('cards',id,data);
+    if(review.i>=review.cards.length){review.cards=null;toast('Review done')}
+    forceRender()}
+  else if(a==='endreview'){review.cards=null;forceRender()}
+  else if(a==='mtag'){mFilter.tag=b.dataset.k;forceRender()}
+  else if(a==='delmistake'){await del('mistakes',b.dataset.id);forceRender()}
+  else if(a==='addscore'){
+    const c=+$('#scC').value,n=+$('#scN').value; if(!n||c>n||c<0){toast('Enter correct and out-of, e.g. 41 of 60');return}
+    await put('scores',uid(),{type:$('#scType').value,topic:$('#scTopic').value,date:$('#scDate').value||todayISO(),c,n,pct:pct(c,n)});forceRender();toast('Score added')
+  }
+  else if(a==='delscore'){await del('scores',b.dataset.id);forceRender()}
+  else if(a==='modadd'){const k=b.dataset.topic,inp=$('#modAdd_'+k),name=inp.value.trim();if(!name){inp.focus();return}
+    openTopics.add(k);await saveMods(k,[...mods(k),{id:uid(),name,done:false}]);forceRender();toast('Module added')}
+  else if(a==='moddel'){const k=b.dataset.topic;
+    if(b.dataset.sure){openTopics.add(k);await saveMods(k,mods(k).filter(m=>m.id!==b.dataset.id));forceRender()}
+    else{b.dataset.sure=1;b.textContent='Remove?';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='✕'}},3000)}}
+  else if(a==='ntopic'){noteTopic=b.dataset.k;testMode=false;forceRender()}
+  else if(a==='testmode'){testMode=!testMode;forceRender()}
+});
+document.addEventListener('change',async e=>{
+  const t=e.target;
+  if(t.dataset.act==='redone'){const m=S.mistakes[t.dataset.id];if(m){await put('mistakes',t.dataset.id,{...m,redone:t.checked,redoneOn:t.checked?todayISO():null});if(view==='mistakes'||view==='session')forceRender()}}
+  else if(t.id==='sTopic'){setup.topic=t.value;setup.touched=true;setup.moduleId='';setup.module=$('#sModule').value;forceRender()}
+  else if(t.id==='sModSel'){setup.moduleId=t.value||'__other'}
+  else if(t.dataset.act==='moddone'){const k=t.dataset.topic;await saveMods(k,mods(k).map(m=>m.id===t.dataset.id?{...m,done:t.checked,doneOn:t.checked?todayISO():null}:m));forceRender()}
+  else if(t.id==='cFilter'){cardFilter=t.value;forceRender()}
+  else if(t.id==='cShowAdded'){showAdded=t.checked;forceRender()}
+  else if(t.id==='mOpen'){mFilter.open=t.checked;forceRender()}
+  else if(t.id==='fsTopic'){syncBinds();run.data.fsTopic=t.value;saveRun();forceRender()}
+  else if(t.dataset.quiz){syncBinds();forceRender()}
+});
+function syncBinds(){
+  if(!run)return;
+  document.querySelectorAll('[data-bind]').forEach(el=>run.data[el.dataset.bind]=el.value);
+  document.querySelectorAll('[data-quiz]').forEach(el=>{
+    let q=run.data.quizzes.find(x=>x.step===el.dataset.quiz);
+    if(!q){q={step:el.dataset.quiz,topic:el.dataset.qtopic,n:'',c:''};run.data.quizzes.push(q)}
+    q[el.dataset.f]=el.value===''?'':+el.value;
+  });
+  saveRun();
+}
+let noteTimer=null;
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.bind||t.dataset.quiz){syncBinds()}
+  if(t.dataset.note){
+    const s=$('#nSaved'); if(s)s.textContent='Saving…';
+    clearTimeout(noteTimer); const k=noteTopic;
+    S.notes[k]={...(S.notes[k]||{}),[t.dataset.note]:t.value};
+    noteTimer=setTimeout(async()=>{await put('notes',k,{...S.notes[k]});const s2=$('#nSaved');if(s2)s2.textContent='Saved'},1200);
+  }
+});
+document.addEventListener('focusout',()=>{setTimeout(()=>{const a=document.activeElement;if(!(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT')))render()},0)});
+document.addEventListener('toggle',e=>{const d=e.target;if(d.id==='planEd')planOpen=d.open;if(d.tagName==='DETAILS'&&d.dataset.topic){d.open?openTopics.add(d.dataset.topic):openTopics.delete(d.dataset.topic)}},true);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&run&&!run.paused)keepAwake()});
+
+/* ---------- boot ---------- */
+if(run&&!run.paused)startTick();
+initStore();
+</script>
+</body>
+</html>
