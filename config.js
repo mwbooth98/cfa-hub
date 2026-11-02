@@ -3,6 +3,6 @@
 // means only your signed-in account can read or change your data.
 // Never put the service_role / secret key here.
 window.CFA_CONFIG = {
-  url: "PASTE_SUPABASE_PROJECT_URL",
-  key: "PASTE_SUPABASE_ANON_OR_PUBLISHABLE_KEY"
+  url: "https://ubuhfsfbmqzlbimwpurk.supabase.co",
+  key: "sb_publishable_y0yVCzPs23hvppkZ6F42gw_mrnhdPyy"
 };
