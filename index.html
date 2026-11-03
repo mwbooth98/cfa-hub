@@ -352,7 +352,7 @@ async function loadAll(){
   BLOCKS=computeBlocks();
   try{await migrateCurriculum()}catch(e){console.error(e)}
   setSync('Synced '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
-  forceRender();
+  render.keep=true;forceRender();
 }
 function showLogin(msg){$('#app').hidden=true;$('#auth').hidden=false;$('#lTrust').checked=trusted();$('#lErr').textContent=msg||'';setTimeout(()=>$('#lEmail').focus(),0)}
 async function start(u){user=u;$('#auth').hidden=true;$('#app').hidden=false;route();await loadAll();armIdle()}
@@ -621,7 +621,7 @@ function suggestWeeks(){
 /* ---------- routing ---------- */
 const VIEWS = ['today','progress','session','plan','cards','mistakes','scores','notes'];
 let view = 'today';
-function route(){if(!user)return;const h=location.hash.slice(1);view=VIEWS.includes(h)?h:'today';render();window.scrollTo(0,0)}
+function route(){if(!user)return;const h=location.hash.slice(1);view=VIEWS.includes(h)?h:'today';forceRender();window.scrollTo(0,0)}
 window.addEventListener('hashchange',()=>route());
 
 /* ---------- session runner state ---------- */
@@ -655,11 +655,14 @@ function render(){
   // keep focus/typing safe: don't re-render while editing a field in session/notes
   const act=document.activeElement;
   if(act&&(act.tagName==='TEXTAREA'||act.tagName==='INPUT')&&act.closest('#view')&&!render.force){return}
-  render.force=false;
-  const v=$('#view');
+  // A forced render follows an action (log, save, switch view) and may reset its form; any other render, e.g. after
+  // moving off a field or a background sync, keeps what's been typed into fields that aren't backed by saved state.
+  const keep=!render.force||render.keep; render.force=render.keep=false;
+  const v=$('#view'), typed=keep?[...v.querySelectorAll('input[id],select[id],textarea[id]')].filter(el=>el.type!=='checkbox'&&el.type!=='radio'&&!el.dataset.bind&&!el.dataset.quiz&&!el.dataset.note).map(el=>[el.id,el.value]):[];
   v.innerHTML=({today:vToday,progress:vProgress,session:vSession,plan:vPlan,cards:vCards,mistakes:vMistakes,scores:vScores,notes:vNotes})[view]();
   if(view==='session')updateClock();
   if(view==='notes')fillNotes();
+  for(const [id,val] of typed){const el=document.getElementById(id);if(el&&el.value!==val&&(el.tagName!=='SELECT'||[...el.options].some(o=>o.value===val)))el.value=val}
 }
 function forceRender(){render.force=true;render()}
 
