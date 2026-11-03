@@ -69,6 +69,7 @@ button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
 textarea{resize:vertical;min-height:110px;font-family:var(--body);line-height:1.5}
+textarea.tall{min-height:240px}
 textarea.mono{font-family:var(--mono);font-size:13px}
 label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:500;min-width:0}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
@@ -115,6 +116,11 @@ tr.now td{background:var(--accent-soft)}
 .why{font-size:13px;color:var(--muted);border-left:3px solid var(--accent);padding:2px 0 2px 10px}
 .guide{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .ctrl{display:flex;gap:8px;flex-wrap:wrap}
+.ideas .li{flex-wrap:wrap}
+.ideas .idea{font-size:14.5px;line-height:1.45;min-width:160px;overflow-wrap:anywhere}
+.adj{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.adj>span:first-child{margin-right:2px}
+.adj #studied{margin-left:auto}
 .card-face{min-height:150px;display:grid;place-items:center;text-align:center;font-size:18px;padding:24px;background:var(--bg);border-radius:var(--r);border:1px solid var(--line);white-space:pre-wrap}
 .card-face.back{font-size:16px}
 .rate{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -640,6 +646,8 @@ function updateClock(){
   const a=Math.abs(Math.round(left));
   el.textContent=(left<0?'+':'')+Math.floor(a/60)+':'+pad(a%60);
   el.classList.toggle('over',left<0);
+  const s2=$('#studied');if(s2)s2.textContent=Math.floor(stepElapsed(run.i)/60)+' min on this step';
+  const te=$('#totEl');if(te)te.textContent=Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60);
   if(left<=0&&!run.chimed?.[run.i]){run.chimed=run.chimed||{};run.chimed[run.i]=1;chime();saveRun()}
 }
 let actx=null;
@@ -654,16 +662,28 @@ function render(){
   const due=dueCards().length,ct=$('#dueCt');ct.hidden=!due;ct.textContent=due;
   // keep focus/typing safe: don't re-render while editing a field in session/notes
   const act=document.activeElement;
-  if(act&&(act.tagName==='TEXTAREA'||act.tagName==='INPUT')&&act.closest('#view')&&!render.force){return}
+  if(act&&/^(TEXTAREA|INPUT|SELECT)$/.test(act.tagName)&&act.closest('#view')&&!render.force){render.pending=true;return}
+  render.pending=false;
   // A forced render follows an action (log, save, switch view) and may reset its form; any other render, e.g. after
   // moving off a field or a background sync, keeps what's been typed into fields that aren't backed by saved state.
   const keep=!render.force||render.keep; render.force=render.keep=false;
-  const v=$('#view'), typed=keep?[...v.querySelectorAll('input[id],select[id],textarea[id]')].filter(el=>el.type!=='checkbox'&&el.type!=='radio'&&!el.dataset.bind&&!el.dataset.quiz&&!el.dataset.note).map(el=>[el.id,el.value]):[];
+  const v=$('#view'), focusId=act&&act.id&&v.contains(act)?act.id:null, sel=focusId&&act.selectionStart!=null?[act.selectionStart,act.selectionEnd]:null;
+  saveSizes();
+  const typed=keep?[...v.querySelectorAll('input[id],select[id],textarea[id]')].filter(el=>el.type!=='checkbox'&&el.type!=='radio'&&!el.dataset.bind&&!el.dataset.quiz&&!el.dataset.note).map(el=>[el.id,el.value]):[];
   v.innerHTML=({today:vToday,progress:vProgress,session:vSession,plan:vPlan,cards:vCards,mistakes:vMistakes,scores:vScores,notes:vNotes})[view]();
   if(view==='session')updateClock();
   if(view==='notes')fillNotes();
   for(const [id,val] of typed){const el=document.getElementById(id);if(el&&el.value!==val&&(el.tagName!=='SELECT'||[...el.options].some(o=>o.value===val)))el.value=val}
+  v.querySelectorAll('textarea[id]').forEach(el=>{if(taSize[el.id])el.style.height=taSize[el.id];grow(el)});
+  // put focus back where it was, so Tab order and typing carry on after a redraw
+  if(focusId){const el=document.getElementById(focusId);if(el&&el!==document.activeElement){el.focus({preventScroll:true});if(sel)try{el.setSelectionRange(sel[0],sel[1])}catch(_){}}}
 }
+// Text boxes keep the size you drag them to, across redraws, steps and reloads (per browser).
+const TAKEY='cfa-hub-sizes';
+let taSize={};try{taSize=JSON.parse(localStorage.getItem(TAKEY)||'{}')||{}}catch(e){}
+function saveSizes(){let ch=false;document.querySelectorAll('#view textarea[id]').forEach(el=>{const h=el.style.height;if(h&&h!==el.dataset.grown&&taSize[el.id]!==h){taSize[el.id]=h;ch=true}});if(ch)try{localStorage.setItem(TAKEY,JSON.stringify(taSize))}catch(e){}}
+// grow a text box to fit what's in it (never shrinks below the size it has)
+function grow(el){if(el.tagName==='TEXTAREA'&&el.scrollHeight>el.clientHeight+2)el.style.height=el.dataset.grown=(el.scrollHeight+2)+'px'}
 function forceRender(){render.force=true;render()}
 
 function vToday(){
@@ -801,7 +821,7 @@ function vSession(){
     <h1>${esc(st.t)}</h1></header>
   <div class="runner">
     <section class="panel"><div class="steps" role="list">${run.steps.map((s,i)=>`<button class="step ${i===run.i?'on':''} ${i<run.i?'done':''}" data-act="goto" data-i="${i}"><span class="dot">${i<run.i?'✓':i+1}</span>${esc(s.t)}<span class="m">${s.m}m</span></button>`).join('')}</div>
-      <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">Elapsed <span class="num">${Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60)}</span> of ${run.steps.reduce((a,s)=>a+s.m,0)} min</div></section>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">Elapsed <span class="num" id="totEl">${Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60)}</span> of ${run.steps.reduce((a,s)=>a+s.m,0)} min</div></section>
     <div style="display:flex;flex-direction:column;gap:18px;min-width:0">
       <section class="panel" style="display:flex;flex-direction:column;gap:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
@@ -811,6 +831,7 @@ function vSession(){
             <button class="primary" data-act="nextstep">${run.i===run.steps.length-1?'Finish':'Next step'}</button>
           </div>
         </div>
+        <div class="adj"><span>Correct the timer</span>${[[-5,'Took a break without pausing: take 5 minutes off'],[-1,'Take 1 minute off'],[1,'Add 1 minute you studied'],[5,'Forgot to start it: add 5 minutes you studied']].map(([m,t])=>`<button class="small" data-act="adjust" data-m="${m}" title="${t}" aria-label="${t}">${m>0?'+':'−'}${Math.abs(m)} min</button>`).join('')}<span class="num" id="studied">${Math.floor(stepElapsed(run.i)/60)} min on this step</span></div>
         <ul class="guide">${st.guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ul>
         <div class="why">${esc(st.why)}</div>
       </section>
@@ -823,14 +844,14 @@ function vSession(){
 function stepBody(st){
   const d=run.data;
   if(st.type==='blurt') return `<section class="panel"><div class="grid2">
-    <label>From memory, notes closed<textarea id="fBlurt" data-bind="blurt" placeholder="Key ideas, formulas, distinctions…">${esc(d.blurt||'')}</textarea></label>
-    <label>Gaps after checking (one per line)<textarea id="fGaps" data-bind="gaps" placeholder="What you missed or got wrong…">${esc(d.gaps||'')}</textarea></label></div></section>`;
+    <label>From memory, notes closed<textarea id="fBlurt" data-bind="blurt" class="tall" placeholder="Key ideas, formulas, distinctions…">${esc(d.blurt||'')}</textarea></label>
+    <label>Gaps after checking (one per line)<textarea id="fGaps" data-bind="gaps" class="tall" placeholder="What you missed or got wrong…">${esc(d.gaps||'')}</textarea></label></div></section>`;
   if(st.type==='quiz'){
     const topic=st.forceTopic||run.topic; const q=d.quizzes.find(x=>x.step===st.id)||{n:'',c:''};
     return `<section class="panel"><div class="panel-h"><h2>Score</h2><span class="pill">${esc(TOPICS[topic].short)}</span></div>
       <div class="row"><label>Questions<input id="q_n_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="n" value="${q.n}"></label>
       <label>Correct<input id="q_c_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="c" value="${q.c}"></label>
-      <div class="fit" style="padding-bottom:8px"><span class="num" style="font-size:20px;font-weight:600">${q.n?pct(q.c,q.n)+'%':'—'}</span></div></div></section>
+      <div class="fit" style="padding-bottom:8px"><span class="num" id="q_pct_${st.id}" style="font-size:20px;font-weight:600">${q.n?pct(q.c,q.n)+'%':'—'}</span></div></div></section>
       ${run.tpl==='mixed'?(()=>{const w=Object.keys(TOPICS).flatMap(k=>doneMods(k).map(m=>({k,m}))).sort((a,b)=>(overconfident(b.k,b.m)?1:0)-(overconfident(a.k,a.m)?1:0)||(a.m.rating??2.5)-(b.m.rating??2.5)).slice(0,6);
         return w.length?`<section class="panel"><h2 style="margin-bottom:8px">Build this set from your weakest modules</h2><div class="list">${w.map(({k,m})=>`<div class="li"><span class="pill">${esc(TOPICS[k].short)}</span><span class="grow">${esc(m.name)}</span>${m.rating?`<span class="pill ${RATING[m.rating].c}">${m.rating}</span>`:'<span class="meta">unrated</span>'}${overconfident(k,m)?'<span class="pill bad">⚑</span>':''}</div>`).join('')}</div></section>`:''})():''}
       ${mistakeForm(topic)}
@@ -842,7 +863,7 @@ function stepBody(st){
       <textarea id="fForm" class="mono" data-bind="formulas" placeholder="One per line, e.g. FV = PV × (1 + r)^n">${esc(d.formulas||'')}</textarea>
       <p class="sub" style="font-size:12.5px">Added to your formula sheet in Notes when you finish.</p></section>
     <section class="panel"><div class="panel-h"><h2>Flashcards</h2><span class="pill">${d.cards.length} added</span></div>
-      ${gaps.length?`<p class="sub" style="margin:0 0 8px;font-size:13px">From your gaps and parking lot, tap to use as the front:</p><div class="row" style="gap:6px;margin-bottom:10px">${gaps.map((g,i)=>`<button class="small fit" data-act="gapfront" data-i="${i}">${esc(g.length>48?g.slice(0,46)+'…':g)}</button>`).join('')}</div>`:''}
+      ${gaps.length?`<p class="sub" style="margin:0 0 8px;font-size:13px">Each line you wrote under Gaps (in the blurt step) or in the Parking lot is a card idea. Pick one to use as the front, then write the back.</p><div class="list ideas" style="margin-bottom:12px">${gaps.map((g,i)=>`<div class="li"><span class="pill ${g.src==='gap'?'warn':''}">${g.src==='gap'?'Gap':'Parking lot'}</span><span class="grow idea">${esc(g.t)}</span><button class="small" data-act="gapfront" data-i="${i}">Use as front</button></div>`).join('')}</div>`:''}
       ${cardForm('run')}
       ${d.cards.length?`<div class="list" style="margin-top:10px">${d.cards.map(c=>`<div class="li"><div class="grow"><b>${esc(c.front)}</b><div class="meta">${esc(c.back)}</div></div></div>`).join('')}</div>`:''}
     </section>
@@ -867,7 +888,8 @@ function stepBody(st){
 }
 function captureLines(){
   const d=run.data;
-  return [...(d.gaps||'').split('\n'),...(d.scratch||'').split('\n')].map(s=>s.trim()).filter(Boolean);
+  const lines=(txt,src)=>(txt||'').split('\n').map(t=>t.trim()).filter(Boolean).map(t=>({t,src}));
+  return [...lines(d.gaps,'gap'),...lines(d.scratch,'scratch')];
 }
 function scratchPanel(st){
   if(st.type==='blurt') return `<section class="panel"><div class="empty">Your parking lot is hidden during this step so you recall from memory, not from your jottings. It comes back in Capture.</div></section>`;
@@ -904,11 +926,11 @@ function vFinish(){
     <div class="stat"><b>${qs.length?pct(qs.reduce((a,q)=>a+q.c,0),qs.reduce((a,q)=>a+q.n,0))+'%':'—'}</b><span>quiz score</span></div>
     <div class="stat"><b>${run.data.cards.length}</b><span>new cards</span></div>
     <div class="stat"><b>${run.data.mistakes.length}</b><span>mistakes logged</span></div></div>
-    <label>How focused were you?<select id="fFocus"><option value="">Skip</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n} — ${['','Distracted','Patchy','OK','Mostly focused','Locked in'][n]}</option>`).join('')}</select></label>
-    ${run.moduleId&&mods(run.topic).find(m=>m.id===run.moduleId)?`<label class="chk" style="margin-top:12px"><input type="checkbox" id="fModDone" ${mods(run.topic).find(m=>m.id===run.moduleId).done||run.tpl!=='module'?'':'checked'}> Mark “${esc(mods(run.topic).find(m=>m.id===run.moduleId).name)}” complete</label>`:''}
+    <label>How focused were you?<select id="fFocus" data-bind="focus"><option value="">Skip</option>${[5,4,3,2,1].map(n=>`<option value="${n}" ${String(run.data.focus||'')===String(n)?'selected':''}>${n} — ${['','Distracted','Patchy','OK','Mostly focused','Locked in'][n]}</option>`).join('')}</select></label>
+    ${run.moduleId&&mods(run.topic).find(m=>m.id===run.moduleId)?`<label class="chk" style="margin-top:12px"><input type="checkbox" id="fModDone" data-bind="markDone" ${(run.data.markDone??!(mods(run.topic).find(m=>m.id===run.moduleId).done||run.tpl!=='module'))?'checked':''}> Mark “${esc(mods(run.topic).find(m=>m.id===run.moduleId).name)}” complete</label>`:''}
     ${(()=>{const m=run.moduleId&&mods(run.topic).find(x=>x.id===run.moduleId);return m?`<div style="margin-top:14px"><div style="font-size:13px;color:var(--muted);font-weight:500;margin-bottom:6px">How well can you do “${esc(m.name)}” now?</div>
       <div class="rate-big">${[1,2,3,4].map(r=>`<button type="button" class="${m.rating===r?'on '+RATING[r].c:''}" data-act="modrate" data-topic="${run.topic}" data-id="${m.id}" data-r="${r}" data-src="session" aria-pressed="${m.rating===r}"><b>${r} · ${RATING[r].l}</b><span>${RATING[r].d}</span></button>`).join('')}</div></div>`:''})()}
-    <label style="margin-top:10px">Note for next time<input id="fNote" placeholder="e.g. Start with the video next time on this topic"></label>
+    <label style="margin-top:10px">Note for next time<input id="fNote" data-bind="note" placeholder="e.g. Start with the video next time on this topic" value="${esc(run.data.note||'')}"></label>
     <div class="ctrl" style="margin-top:14px"><button class="primary" data-act="savesession">Save session</button><button data-act="backto">Back to steps</button></div></section>`;
 }
 
@@ -1065,6 +1087,11 @@ document.addEventListener('click',async e=>{
     if(a==='goto')run.i=+b.dataset.i; else if(run.i<run.steps.length-1)run.i++; else {run.finished=true;run.paused=true}
     run.stepStart=Date.now(); if(!run.finished)run.paused=false; saveRun();forceRender();window.scrollTo(0,0)
   }
+  else if(a==='adjust'){
+    // Move the current step's clock forward (time you studied but didn't log) or back (a break you forgot to pause for).
+    bank();const i=run.i,before=run.elapsed[i]||0;run.elapsed[i]=Math.max(0,before+ +b.dataset.m*60);
+    if(run.chimed&&run.elapsed[i]<run.steps[i].m*60)delete run.chimed[i];
+    saveRun();updateClock();if(before&&!run.elapsed[i])toast('This step is back to 0:00')}
   else if(a==='backto'){run.finished=false;run.paused=false;run.stepStart=Date.now();saveRun();forceRender()}
   else if(a==='abandon'){
     if(b.dataset.sure){run=null;saveRun();forceRender();toast('Session discarded')}
@@ -1099,7 +1126,7 @@ document.addEventListener('click',async e=>{
     if(inSession&&run){run.data.mistakes.push({...m,id,saved:true});saveRun()}
     forceRender();toast('Mistake logged')
   }
-  else if(a==='gapfront'){const g=captureLines()[+b.dataset.i];const f=$('#cFront_run');f.value=g;$('#cBack_run').focus()}
+  else if(a==='gapfront'){const g=captureLines()[+b.dataset.i]?.t||'';const f=$('#cFront_run');f.value=g;$('#cBack_run').focus()}
   else if(a==='addcard'){
     const ctx=b.dataset.ctx,f=$('#cFront_'+ctx).value.trim(),bk=$('#cBack_'+ctx).value.trim();
     if(!f){$('#cFront_'+ctx).focus();return}
@@ -1156,11 +1183,11 @@ document.addEventListener('change',async e=>{
   else if(t.id==='cShowAdded'){showAdded=t.checked;forceRender()}
   else if(t.id==='mOpen'){mFilter.open=t.checked;forceRender()}
   else if(t.id==='fsTopic'){syncBinds();run.data.fsTopic=t.value;saveRun();forceRender()}
-  else if(t.dataset.quiz){syncBinds();forceRender()}
+  else if(t.dataset.bind||t.dataset.quiz){syncBinds()}
 });
 function syncBinds(){
   if(!run)return;
-  document.querySelectorAll('[data-bind]').forEach(el=>run.data[el.dataset.bind]=el.value);
+  document.querySelectorAll('[data-bind]').forEach(el=>run.data[el.dataset.bind]=el.type==='checkbox'?el.checked:el.value);
   document.querySelectorAll('[data-quiz]').forEach(el=>{
     let q=run.data.quizzes.find(x=>x.step===el.dataset.quiz);
     if(!q){q={step:el.dataset.quiz,topic:el.dataset.qtopic,n:'',c:''};run.data.quizzes.push(q)}
@@ -1172,6 +1199,9 @@ let noteTimer=null;
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.dataset.bind||t.dataset.quiz){syncBinds()}
+  if(t.tagName==='TEXTAREA')grow(t);
+  if(t.id==='sModule')setup.module=t.value;
+  if(t.dataset.quiz){const q=run?.data.quizzes.find(x=>x.step===t.dataset.quiz),o=$('#q_pct_'+t.dataset.quiz);if(o)o.textContent=q&&q.n?pct(q.c,q.n)+'%':'—'}
   if(t.dataset.note){
     const s=$('#nSaved'); if(s)s.textContent='Saving…';
     clearTimeout(noteTimer); const k=noteTopic;
@@ -1179,7 +1209,15 @@ document.addEventListener('input',e=>{
     noteTimer=setTimeout(async()=>{await put('notes',k,{...S.notes[k]});const s2=$('#nSaved');if(s2)s2.textContent='Saved'},1200);
   }
 });
-document.addEventListener('focusout',()=>{setTimeout(()=>{const a=document.activeElement;if(!(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT')))render()},0)});
+// A redraw that was held back while you were typing runs once you leave the form, but never in the middle of a
+// click (redrawing between mouse down and up swallows the click) and never while focus is on another control
+// on the page (that would throw away Tab focus). The action itself redraws anyway.
+let pointerDown=false;
+document.addEventListener('pointerdown',()=>{pointerDown=true},true);
+document.addEventListener('pointerup',()=>{pointerDown=false;if(render.pending)setTimeout(pendingRender,300)},true);
+document.addEventListener('pointercancel',()=>{pointerDown=false},true);
+function pendingRender(){if(!render.pending||pointerDown)return;const a=document.activeElement;if(a&&a!==document.body&&a.closest('#view'))return;render()}
+document.addEventListener('focusout',()=>{if(render.pending)setTimeout(pendingRender,300)});
 document.addEventListener('toggle',e=>{const d=e.target;if(d.id==='planEd')planOpen=d.open;if(d.tagName==='DETAILS'&&d.dataset.topic){d.open?openTopics.add(d.dataset.topic):openTopics.delete(d.dataset.topic)}},true);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&run&&!run.paused)keepAwake()});
 
