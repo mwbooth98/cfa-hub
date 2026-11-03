@@ -127,6 +127,18 @@ tr.now td{background:var(--accent-soft)}
 .chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
 .chk input{width:auto}
 details summary{cursor:pointer;color:var(--muted);font-size:13.5px;font-weight:600}
+.rate-chips{display:inline-flex;gap:3px;flex:none}
+.rc{width:28px;height:28px;padding:0;justify-content:center;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--muted);border-radius:6px}
+.rc.on{border-color:transparent}
+.rc.on.bad,.rate-big button.on.bad{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
+.rc.on.warn,.rate-big button.on.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.rc.on.acc,.rate-big button.on.acc{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.rc.on.good,.rate-big button.on.good{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.rate-big{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rate-big button{flex-direction:column;align-items:flex-start;text-align:left;gap:2px;font-weight:500;padding:10px 12px}
+.rate-big button span{font-size:12px;color:var(--muted);font-weight:400}
+.legend{display:flex;flex-direction:column;gap:6px;margin-top:8px;font-size:13.5px}
+@media (max-width:860px){.rate-big{grid-template-columns:1fr 1fr}}
 @media (max-width:860px){
   .app{grid-template-columns:1fr}
   nav.rail{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;justify-content:space-around;padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));border-right:0;border-top:1px solid var(--line);z-index:20;gap:0}
@@ -184,16 +196,16 @@ details summary{cursor:pointer;color:var(--muted);font-size:13.5px;font-weight:6
 /* ---------- reference data ---------- */
 const EXAM = '2027-05-11';
 const TOPICS = {
-  ethics:{name:'Ethics & Professional Standards',short:'Ethics',w:'15–20%',fam:'low'},
+  ethics:{name:'Ethical and Professional Standards',short:'Ethics',w:'15–20%',fam:'low'},
   quant:{name:'Quantitative Methods',short:'Quant',w:'6–9%',fam:'med'},
   econ:{name:'Economics',short:'Economics',w:'6–9%',fam:'med'},
   fsa:{name:'Financial Statement Analysis',short:'FSA',w:'11–14%',fam:'low'},
-  corp:{name:'Corporate Issuers',short:'Corporate',w:'6–9%',fam:'med'},
-  equity:{name:'Equity Investments',short:'Equity',w:'11–14%',fam:'high'},
+  corp:{name:'Corporate Finance',short:'Corporate',w:'6–9%',fam:'med'},
+  equity:{name:'Equities',short:'Equities',w:'11–14%',fam:'high'},
   fi:{name:'Fixed Income',short:'Fixed Income',w:'11–14%',fam:'med'},
   deriv:{name:'Derivatives',short:'Derivatives',w:'5–8%',fam:'low'},
   alts:{name:'Alternative Investments',short:'Alternatives',w:'7–10%',fam:'med'},
-  pm:{name:'Portfolio Management',short:'Portfolio Mgmt',w:'8–12%',fam:'high'}
+  pm:{name:'Portfolio Construction',short:'Portfolio',w:'8–12%',fam:'high'}
 };
 const START='2026-11-02', REVIEW_END='2027-04-11', MOCK_END='2027-05-09';
 const DEFAULT_PLAN={order:['ethics','quant','econ','fsa','corp','equity','fi','deriv','alts','pm'],weeks:{ethics:1,quant:2,econ:2,fsa:5,corp:1,equity:2,fi:3,deriv:2,alts:1,pm:1}};
@@ -260,7 +272,7 @@ const TEMPLATES = {
     {id:'cap',type:'capture',t:'Capture',m:5,why:WHY.capture,guide:['Formulas to the sheet, misses to the log, gaps to flashcards.']}
   ]},
   review:{name:'Weekly review',desc:'Sunday · 2 hours · retention',build:t=>[
-    {id:'tq',type:'quiz',t:'Timed topic quiz',m:45,why:WHY.timed,guide:['Do any topic revisits due this week first (listed on the Plan tab): 20–30 unseen QBank questions on that topic, closed-book.','Otherwise a topic test on the current topic at about 90 seconds a question.','From January on, make it 70% current topic, 30% finished topics.']},
+    {id:'tq',type:'quiz',t:'Timed topic quiz',m:45,why:WHY.timed,guide:['Do this week\u2019s topic revisits first (listed on Today): unseen QBank questions on that topic, closed-book. Log the score, then rate its modules.','Otherwise a topic test on the current topic at about 90 seconds a question.','From January on, make it 70% current topic, 30% finished topics.']},
     {id:'redo',type:'redo',t:'Redo this week’s mistakes',m:30,why:WHY.redo,guide:['Redo each logged question without looking at the answer. Tick it when you get it right.']},
     {id:'eth',type:'quiz',t:'Ethics questions',m:20,why:WHY.ethics,guide:['20 minutes of Ethics questions, every week until the exam.'],forceTopic:'ethics'},
     {id:'fs',type:'formula',t:'Formula sheet from memory',m:20,why:WHY.formula,guide:['Write the formula sheet for one finished topic from scratch, then compare.']},
@@ -336,6 +348,8 @@ async function loadAll(){
     if(data.length<1000)break;
   }
   COLLS.forEach(c=>S[c]=fresh[c]);
+  BLOCKS=computeBlocks();
+  try{await migrateCurriculum()}catch(e){console.error(e)}
   setSync('Synced '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
   forceRender();
 }
@@ -377,25 +391,6 @@ const ankiDone = d=>!!S.checkins[d]?.anki;
 function ankiStreak(){let n=0,d=todayISO();if(!ankiDone(d))d=addDays(d,-1);while(ankiDone(d)){n++;d=addDays(d,-1)}return n}
 async function toggleAnki(){const t=todayISO();if(ankiDone(t))await del('checkins',t);else await put('checkins',t,{anki:true,at:Date.now()});forceRender()}
 /* topic revisits: ~1, 3 and 8 weeks after a topic is finished (planned block end, or the day its last module was ticked) */
-const REV_GAPS=[7,21,56];
-function revisitBase(k){
-  const b=BLOCKS.find(x=>x.k===k), it=mods(k);
-  if(it.length&&it.every(m=>m.done)){const last=it.map(m=>m.doneOn||b.e).sort().at(-1);return last}
-  return b.e;
-}
-function revisits(){
-  const out=[];
-  Object.keys(TOPICS).forEach(k=>{const base=revisitBase(k);REV_GAPS.forEach((g,i)=>{const date=addDays(base,g);if(date>'2027-05-09')return;
-    const sc=arr('scores').find(s=>s.type==='revisit'&&s.topic===k&&s.rev===i+1);out.push({k,n:i+1,date,base,score:sc})})});
-  return out.sort((a,b)=>a.date<b.date?-1:1);
-}
-function baselineScore(k){const r=arr('scores').filter(s=>s.topic===k&&s.type==='test').sort((a,b)=>a.date<b.date?-1:1);if(r.length)return r[0].pct;const q=topicQuiz(k).filter(x=>x.type!=='revisit');return q.length?Math.round(q.reduce((a,x)=>a+x.p,0)/q.length):null}
-function revisitRows(list,inline){
-  return `<div class="list">${list.map(r=>{const base=baselineScore(r.k),drop=r.score&&base!=null?base-r.score.pct:null;
-    return `<div class="li" style="flex-wrap:wrap"><span class="pill num ${!r.score&&r.date<=todayISO()?'warn':''}">${fmt(r.date)}</span><div class="grow"><b>${esc(TOPICS[r.k].short)}</b> · revisit ${r.n} of 3<div class="meta">20–30 unseen QBank questions on ${esc(TOPICS[r.k].short)}, closed-book, ~90 s each${base!=null?` · original ${base}%`:''}</div></div>
-    ${r.score?`<b class="num">${r.score.pct}%</b><span class="pill ${drop==null||drop<=10?'good':'bad'}">${drop==null?'Logged':drop<=0?'Holding up':drop<=10?'Normal drop':'Needs an extra session'}</span>`
-    :inline?`<div class="row fit" style="gap:6px;flex-wrap:nowrap"><input id="rvC_${r.k}_${r.n}" type="number" min="0" inputmode="numeric" placeholder="Correct" style="width:84px"><input id="rvN_${r.k}_${r.n}" type="number" min="1" inputmode="numeric" placeholder="Of" style="width:64px"><button class="small" data-act="logrev" data-k="${r.k}" data-n="${r.n}">Log</button></div>`:''}</div>`}).join('')}</div>`;
-}
 function streak(){
   const days=new Set(arr('sessions').map(s=>s.date));let n=0,d=todayISO();
   if(!days.has(d))d=addDays(d,-1);
@@ -408,6 +403,218 @@ function topicQuiz(k){
   arr('scores').forEach(s=>{if(s.topic===k&&s.pct!=null)rows.push({date:s.date,p:s.pct,n:s.n||0,type:s.type})});
   rows.sort((a,b)=>a.date<b.date?-1:1);
   return rows;
+}
+
+const CURRICULUM = {
+  quant:[["q1", "Returns of Financial Assets and Instruments", 127],["q2", "Types of Financial Returns", 86],["q3", "Benchmarking Returns", 118],["q4", "The Time Value of Money in Finance", 299],["q5", "Statistical Characteristics of Asset Returns", 143],["q6", "Statistical Distributions for Financial Asset Prices and Returns", 148],["q9", "Estimation and Hypothesis Testing", 198],["q7", "The Return and Risk of a Financial Portfolio", 179],["q8", "Simulation of Financial Asset Prices and Returns", 119],["q10", "Applications of Simple Linear Regression in Finance", 151],["q11", "Introduction to Financial Data Science", 75]],
+  econ:[["ec1", "The Firm and Market Structures", 180],["ec2", "Understanding Business Cycles", 88],["ec3", "Fiscal Policy", 82],["ec4", "Monetary Policy", 124],["ec5", "Introduction to Geopolitics", 243],["ec6", "International Trade", 151],["ec7", "Capital Flows and the FX Market", 139],["ec8", "Exchange Rate Calculations", 54]],
+  corp:[["c1", "Organizational Forms, Corporate Issuer Features, and Ownership", 167],["c2", "Investors and Other Stakeholders", 182],["c3", "Corporate Governance: Conflicts, Mechanisms, Risks, and Benefits", 160],["c4", "Working Capital and Liquidity", 158],["c5", "Capital Investments and Capital Allocation", 181],["c6", "Capital Structure", 216],["c7", "Business Models", 161]],
+  fsa:[["f1", "Introduction to Financial Statement Analysis", 107],["f2", "Analyzing Income Statements", 215],["f3", "Analyzing Balance Sheets", 90],["f4", "Analyzing Statements of Cash Flows I", 63],["f5", "Analyzing Statements of Cash Flows II", 70],["f6", "Analysis of Inventories", 96],["f7", "Analysis of Long-Term Assets", 167],["f8", "Topics in Long-Term Liabilities and Equity", 154],["f9", "Analysis of Income Taxes", 91],["f10", "Financial Reporting Quality", 284],["f11", "Financial Analysis Techniques", 199],["f12", "Introduction to Financial Statement Modeling", 191]],
+  equity:[["eq1", "Equity Instrument Features", 58],["eq2", "Equity Jurisdictions, Classes, and the Voting Process", 56],["eq3", "Equity Issuance and Trading", 104],["eq4", "Sources of Equity Returns", 134],["eq5", "Introduction to Equity Valuation", 159],["eq6", "Discounted Cash Flow (DCF) and Growth Models", 198],["eq7", "Relative Value Equity Valuation Approaches", 279],["eq8", "Financial Statement Forecasting in Equity Valuation", 218],["eq9", "Industry and Competitive Analysis", 154],["eq10", "Company Analysis: Past, Present, and Future", 107],["eq11", "Equity Analyst Research Reports", 124],["eq12", "The Capital Asset Pricing Model, Market Model, and Other Factor-Based Equity Models", 116]],
+  fi:[["fi1", "Fixed-Income Instrument Features", 103],["fi2", "Fixed-Income Cash Flows and Types", 105],["fi3", "Fixed-Income Issuance and Trading", 77],["fi4", "Fixed-Income Markets for Corporate Issuers", 106],["fi5", "Fixed-Income Markets for Government Issuers", 92],["fi6", "Fixed-Income Bond Valuation: Prices and Yields", 125],["fi7", "Yield and Yield Spread Measures for Fixed-Rate Bonds", 109],["fi8", "Yield and Yield Spread Measures for Floating-Rate Instruments", 111],["fi9", "The Term Structure of Interest Rates: Spot, Par, and Forward Curves", 228],["fi10", "Interest Rate Risk and Return", 123],["fi11", "Yield-Based Bond Duration Measures and Properties", 110],["fi12", "Yield-Based Bond Convexity and Portfolio Properties", 142],["fi13", "Curve-Based and Empirical Fixed-Income Risk Measures", 165],["fi14", "Credit Risk", 125],["fi15", "Credit Analysis for Government Issuers", 94],["fi16", "Credit Analysis for Corporate Issuers", 134],["fi17", "Fixed-Income Securitization", 72],["fi18", "Asset-Backed Security (ABS) Instrument and Market Features", 105],["fi19", "Mortgage-Backed Security (MBS) Instrument and Market Features", 130]],
+  deriv:[["d1", "Derivative Instrument and Derivative Market Features", 119],["d2", "Forward Commitment and Contingent Claim Features and Instruments", 174],["d3", "Derivative Benefits, Risks, and Issuer and Investor Uses", 128],["d4", "Arbitrage, Replication, and the Cost of Carry in Pricing Derivatives", 115],["d5", "Pricing and Valuation of Forward Contracts and for an Underlying with Varying Maturities", 127],["d6", "Pricing and Valuation of Futures Contracts", 106],["d7", "Pricing and Valuation of Interest Rate and Other Swaps", 109],["d8", "Pricing and Valuation of Options", 135],["d9", "Option Replication Using Put–Call Parity", 91],["d10", "Valuing a Derivative Using a One-Period Binomial Model", 87]],
+  alts:[["a1", "Alternative Investment Features, Methods, and Structures", 124],["a2", "Alternative Investment Performance and Returns", 164],["a3", "Investments in Private Capital: Equity and Debt", 142],["a4", "Real Estate and Infrastructure", 131],["a5", "Natural Resources", 117],["a6", "Hedge Funds", 102],["a7", "Introduction to Digital Assets", 146]],
+  pm:[["p1", "Portfolio Risk and Return: Part I", 244],["p2", "Portfolio Risk and Return: Part II", 297],["p3", "Portfolio Management: An Overview", 94],["p4", "Basics of Portfolio Planning and Construction", 166],["p5", "The Behavioral Biases of Individuals", 119],["p6", "Introduction to Risk Management", 231]],
+  ethics:[["e1", "Ethics and Trust in the Investment Profession", 105],["e2", "Code of Ethics and Standards of Professional Conduct", 56],["e3", "Guidance for Standard I: Professionalism", 120],["e4", "Guidance for Standard II: Integrity of Capital Markets", 52],["e5", "Guidance for Standard III: Duties to Clients", 125],["e6", "Guidance for Standard IV: Duties to Employers", 62],["e7", "Guidance for Standard V: Investment Analysis, Recommendations, and Actions", 72],["e8", "Guidance for Standard VI: Conflicts of Interest", 44],["e9", "Guidance for Standard VII: Responsibilities as a CFA Institute Member or CFA Candidate", 30],["e11", "Application of the Code and Standards: Level I", 102]]
+};
+const OBSOLETE_IDS = new Set(['q_1','q_2','q_3','q_4','q_5','q_6','q_7','q_8','q_9','q_10','q_11','e10']);
+
+/* ---------- curriculum migration (CFA Institute 2027 Level I planner) ---------- */
+const CURRICULUM_V = 2;
+async function migrateCurriculum(){
+  if((S.settings.curriculum?.v||0)>=CURRICULUM_V)return;
+  for(const k of Object.keys(CURRICULUM)){
+    const ex=mods(k), byId=Object.fromEntries(ex.map(m=>[m.id,m])), cur=new Set(CURRICULUM[k].map(c=>c[0]));
+    const items=CURRICULUM[k].map(([id,name,est])=>({...(byId[id]||{done:false}),id,name,est}));
+    ex.forEach(m=>{if(!cur.has(m.id)&&(!OBSOLETE_IDS.has(m.id)||m.done))items.push(m)});
+    await put('modules',k,{items});
+  }
+  await put('settings','curriculum',{v:CURRICULUM_V,at:todayISO()});
+  toast('Module list updated to CFA Institute’s 2027 curriculum');
+}
+function modEst(k,m){if(m.est)return m.est;const c=CURRICULUM[k]||[];return c.length?Math.round(c.reduce((a,x)=>a+x[2],0)/c.length):120}
+
+/* ---------- module ratings ---------- */
+const RATING = {
+  1:{l:'Can’t do it',d:'I couldn’t answer a question on this without the notes.',c:'bad'},
+  2:{l:'Shaky',d:'I know the idea, but I’d get questions wrong.',c:'warn'},
+  3:{l:'Solid with effort',d:'I can work through questions, though slowly.',c:'acc'},
+  4:{l:'Could teach it',d:'I can explain it and do questions quickly.',c:'good'}
+};
+async function setRating(k,id,r,src){
+  const t=todayISO();
+  await saveMods(k,mods(k).map(m=>m.id===id?{...m,rating:r,ratedOn:t,hist:[...(m.hist||[]).slice(-19),{d:t,r,s:src}]}:m));
+}
+function ratingChips(k,m,src){
+  return `<span class="rate-chips" role="group" aria-label="Rate ${esc(m.name)}">${[1,2,3,4].map(r=>`<button type="button" class="rc ${m.rating===r?'on '+RATING[r].c:''}" data-act="modrate" data-topic="${k}" data-id="${m.id}" data-r="${r}" data-src="${src}" title="${r} · ${esc(RATING[r].l)}: ${esc(RATING[r].d)}" aria-pressed="${m.rating===r}">${r}</button>`).join('')}</span>`;
+}
+function ratingLegend(){return `<div class="legend">${[1,2,3,4].map(r=>`<span><span class="pill ${RATING[r].c}">${r}</span> <b>${RATING[r].l}</b> <span class="meta">${RATING[r].d}</span></span>`).join('')}</div>`}
+function moduleScore(id){
+  const s=arr('sessions').filter(x=>x.moduleId===id&&(x.quizzes||[]).some(q=>q.n)).sort((a,b)=>(a.ts||0)-(b.ts||0)).at(-1);
+  if(!s)return null;const q=s.quizzes.filter(q=>q.n);return pct(q.reduce((a,x)=>a+x.c,0),q.reduce((a,x)=>a+x.n,0));
+}
+const revLogs = k=>arr('scores').filter(s=>s.type==='revisit'&&s.topic===k).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0));
+function overconfident(k,m){
+  if(!(m.rating>=3))return false;
+  const ms=moduleScore(m.id); return ms!=null&&ms<65;
+}
+function topicOverconfident(k){
+  const r=doneMods(k).map(m=>m.rating).filter(Boolean), last=revLogs(k).at(-1);
+  if(doneMods(k).some(m=>overconfident(k,m)))return true;
+  return !!(last&&last.pct<65&&r.length&&r.reduce((a,b)=>a+b,0)/r.length>=3);
+}
+function underconfident(m){const ms=moduleScore(m.id);return m.rating&&m.rating<=2&&ms!=null&&ms>=75}
+const doneMods = k=>mods(k).filter(m=>m.done);
+function weakest(k){const r=doneMods(k).map(m=>m.rating).filter(Boolean);return r.length?Math.min(...r):null}
+function focusModules(k,n=3){
+  const key=m=>[overconfident(k,m)?0:1,m.rating??2.5,moduleScore(m.id)??100];
+  const sorted=doneMods(k).slice().sort((a,b)=>{const x=key(a),y=key(b);for(let i=0;i<3;i++)if(x[i]!==y[i])return x[i]-y[i];return 0});
+  const flagged=sorted.filter(m=>overconfident(k,m)||(m.rating&&m.rating<=2));
+  return (flagged.length?flagged:sorted.slice(0,2)).slice(0,n);
+}
+
+/* ---------- adaptive topic revisits ---------- */
+const scoreLevel = p=>p<55?1:p<65?2:p<75?3:4;
+const INIT_GAP = {1:4,2:7,3:10,4:14};
+function reviewStart(){return BLOCKS.find(b=>b.k==='review')?.s||'2027-03-22'}
+function revisitBaseDate(k){
+  const it=mods(k), dn=it.filter(m=>m.done), b=BLOCKS.find(x=>x.k===k), t=todayISO();
+  if(!dn.length)return null;
+  if(dn.length===it.length)return dn.map(m=>m.doneOn||b?.e||t).sort().at(-1);
+  return b&&t>b.e?b.e:null;
+}
+function topicSchedule(k){
+  const base=revisitBaseDate(k); if(!base)return null;
+  const logs=revLogs(k), wk=weakest(k), t=todayISO();
+  let gap=INIT_GAP[wk]||7, next=addDays(base,gap), skip=false, lastL=null;
+  logs.forEach((g,i)=>{
+    const L=scoreLevel(g.pct);
+    gap=L===1?4:L===2?Math.max(7,gap):L===3?Math.round(gap*2.5):Math.round(gap*3.5);
+    next=addDays(g.date,gap);
+    skip=L===4&&lastL===4&&wk===4; lastL=L;
+  });
+  const since=logs.at(-1)?.date||base;
+  doneMods(k).forEach(m=>{if(m.ratedOn&&m.ratedOn>since){if(m.rating===1)next=next<addDays(m.ratedOn,4)?next:addDays(m.ratedOn,4);else if(m.rating===2)next=next<addDays(m.ratedOn,7)?next:addDays(m.ratedOn,7)}});
+  const oc=topicOverconfident(k);
+  const lvl=logs.length?Math.min(scoreLevel(logs.at(-1).pct),wk||4):wk;
+  const size=oc||(lvl&&lvl<=2)?'25–30':lvl===4?'15':'20';
+  const toReview=skip||next>=reviewStart();
+  return {k,base,next:toReview?null:next,toReview,gap,n:logs.length+1,wk,oc,last:logs.at(-1),size,
+    overdue:next&&!toReview?Math.max(0,diffDays(next,t)):0,focus:focusModules(k)};
+}
+function behindBy(){
+  const ks=Object.keys(TOPICS);
+  const exp=Math.round(ks.reduce((a,k)=>a+mods(k).length*expectedFrac(k),0));
+  return exp-ks.reduce((a,k)=>a+mods(k).filter(m=>m.done).length,0);
+}
+const catchUp = ()=>todayISO()<reviewStart()&&behindBy()>=3;
+function revisitWeek(){
+  const t=todayISO(), sun=addDays(weekStart(t),6), cap=catchUp()?1:2;
+  const all=Object.keys(TOPICS).map(topicSchedule).filter(Boolean);
+  const loggedThisWeek=arr('scores').filter(s=>s.type==='revisit'&&s.date>=weekStart(t)&&s.date<=sun).length;
+  const due=all.filter(s=>s.next&&s.next<=sun).sort((a,b)=>
+    (a.overdue>14?0:1)-(b.overdue>14?0:1)||(a.oc?0:1)-(b.oc?0:1)||(a.wk??2.5)-(b.wk??2.5)||b.overdue-a.overdue||wMid(b.k)-wMid(a.k));
+  const room=Math.max(0,cap-loggedThisWeek);
+  return {cap,room,loggedThisWeek,slots:due.slice(0,room),waiting:due.slice(room),
+    upcoming:all.filter(s=>s.next&&s.next>sun).sort((a,b)=>a.next<b.next?-1:1),toReview:all.filter(s=>s.toReview)};
+}
+function baselineScore(k){const r=arr('scores').filter(s=>s.topic===k&&s.type==='test').sort((a,b)=>a.date<b.date?-1:1);if(r.length)return r[0].pct;const q=topicQuiz(k).filter(x=>x.type!=='revisit');return q.length?Math.round(q.reduce((a,x)=>a+x.p,0)/q.length):null}
+function focusLine(s){return s.focus.length?`Focus: ${s.focus.map(m=>`${esc(m.name)}${m.rating?` (${m.rating})`:''}${overconfident(s.k,m)?' ⚑':''}`).join(' · ')}`:'Rate this topic’s modules to get focus suggestions'}
+function revisitCard(s,mode){
+  const base=baselineScore(s.k);
+  return `<div class="li" style="flex-wrap:wrap;align-items:flex-start"><span class="pill num ${mode==='slot'&&s.overdue?'warn':mode==='slot'?'acc':''}">${mode==='review'?'March review':fmt(s.next)}</span>
+  <div class="grow" style="min-width:200px"><b>${esc(TOPICS[s.k].short)}</b> · revisit ${s.n}${s.oc?' <span class="pill bad" title="Your ratings are higher than your scores">Overconfident</span>':''}
+  <div class="meta">${s.size} unseen QBank questions, closed-book, ~90 s each${base!=null?` · original ${base}%`:''}${s.last?` · last ${s.last.pct}%`:''}</div>
+  <div class="meta" style="margin-top:2px">${focusLine(s)}</div></div>
+  ${mode==='slot'?`<div class="row fit" style="gap:6px;flex-wrap:nowrap"><input id="rvC_${s.k}" type="number" min="0" inputmode="numeric" placeholder="Correct" style="width:96px" aria-label="Correct"><input id="rvN_${s.k}" type="number" min="1" inputmode="numeric" placeholder="Of" style="width:64px" aria-label="Out of"><button class="small" data-act="logrev" data-k="${s.k}">Log</button></div>`:''}</div>`;
+}
+let rateAfter=null;
+function rateAfterPanel(){
+  if(!rateAfter||!TOPICS[rateAfter])return '';
+  const k=rateAfter, list=doneMods(k), f=new Set(focusModules(k).map(m=>m.id));
+  list.sort((a,b)=>(f.has(a.id)?0:1)-(f.has(b.id)?0:1));
+  return `<section class="panel" style="border-color:var(--accent)"><div class="panel-h"><h2>Rate the ${esc(TOPICS[k].short)} modules you just revisited</h2><button class="small" data-act="rateafterdone">Done</button></div>
+  <p class="sub" style="font-size:13px;margin:-4px 0 8px">Rate what you can do now, after seeing your score. Focus modules are listed first.</p>
+  <div class="list">${list.map(m=>`<div class="li" style="flex-wrap:wrap"><span class="grow">${esc(m.name)}${overconfident(k,m)?' <span class="pill bad">Overconfident</span>':''}</span>${ratingChips(k,m,'revisit')}</div>`).join('')}</div></section>`;
+}
+function revisitsPanel(compact){
+  const w=revisitWeek(), sun=addDays(weekStart(todayISO()),6);
+  const head=`<div class="panel-h"><h2>Topic revisits</h2><span class="sub" style="font-size:12.5px">${w.loggedThisWeek} of ${w.cap} done this week${catchUp()?' · catch-up mode':''}</span></div>`;
+  if(compact) return w.slots.length||w.waiting.length?`<section class="panel">${head}<div class="list">${w.slots.map(s=>revisitCard(s,'slot')).join('')}</div>${w.waiting.length?`<p class="sub" style="font-size:12.5px;margin:8px 0 0">Waiting for room next week: ${w.waiting.map(s=>esc(TOPICS[s.k].short)).join(', ')}</p>`:''}</section>`:'';
+  const logged=Object.keys(TOPICS).flatMap(k=>revLogs(k)).sort((a,b)=>a.date<b.date?1:-1);
+  return `<section class="panel">${head}
+  <p class="sub" style="margin:-4px 0 10px;font-size:13px">Revisits happen in your Sunday review, ${w.cap} a week${catchUp()?' while you catch up on new material':''}. Timing adapts to your scores and ratings. A score under your rating counts as the real level.</p>
+  ${w.slots.length?`<h3 style="margin:4px 0">This week (by ${fmt(sun)})</h3><div class="list">${w.slots.map(s=>revisitCard(s,'slot')).join('')}</div>`:`<div class="empty">${w.loggedThisWeek>=w.cap?'This week’s revisits are done.':'No revisits due this week.'}</div>`}
+  ${w.waiting.length?`<h3 style="margin:14px 0 4px">Waiting for room</h3><p class="sub" style="font-size:12.5px;margin:0 0 4px">Due, but this week’s slots are full. They move to next week, most urgent first.</p><div class="list">${w.waiting.map(s=>revisitCard(s,'wait')).join('')}</div>`:''}
+  ${w.upcoming.length?`<details style="margin-top:12px"><summary>Upcoming (${w.upcoming.length})</summary><div class="list">${w.upcoming.map(s=>revisitCard(s,'up')).join('')}</div></details>`:''}
+  ${w.toReview.length?`<details style="margin-top:8px"><summary>Strong enough to wait for the March review (${w.toReview.length})</summary><div class="list">${w.toReview.map(s=>revisitCard(s,'review')).join('')}</div></details>`:''}
+  ${logged.length?`<details style="margin-top:8px"><summary>Logged revisits (${logged.length})</summary><div class="list">${logged.map(g=>{const b=baselineScore(g.topic),drop=b!=null?b-g.pct:null;return `<div class="li"><span class="pill num">${fmt(g.date)}</span><span class="grow">${esc(TOPICS[g.topic]?.short||'')} · revisit ${g.rev||''}</span><b class="num">${g.pct}%</b><span class="pill ${g.pct<65?'bad':drop!=null&&drop>10?'warn':'good'}">${g.pct<65?'Below 65%':drop!=null&&drop>10?'Dropped '+drop+' pts':'Holding up'}</span></div>`}).join('')}</div></details>`:''}
+  </section>`;
+}
+
+/* ---------- pace tracking ---------- */
+const NEW_TPLS = new Set(['module','deep']);
+const ASSUMED_PACE = 0.7;
+function paceStats(){
+  const act={};
+  arr('sessions').forEach(s=>{if(s.moduleId&&NEW_TPLS.has(s.tpl))act[s.moduleId]=(act[s.moduleId]||0)+(s.minutes||0)});
+  let a=0,e=0,n=0;
+  Object.keys(TOPICS).forEach(k=>mods(k).forEach(m=>{if(m.done&&act[m.id]){a+=act[m.id];e+=modEst(k,m);n++}}));
+  const pace=n>=3&&e?a/e:null, used=pace??ASSUMED_PACE;
+  const remEst=Object.keys(TOPICS).reduce((x,k)=>x+mods(k).filter(m=>!m.done).reduce((y,m)=>y+modEst(k,m),0),0);
+  const remH=remEst*used/60;
+  // new-material hours per week: average of the last 3 finished weeks that had any, else plan (10.5 h minus 2 h review)
+  const t=todayISO(), ws=weekStart(t), byW={};
+  arr('sessions').forEach(s=>{if(NEW_TPLS.has(s.tpl)){const w=weekStart(s.date);byW[w]=(byW[w]||0)+(s.minutes||0)}});
+  const recent=[1,2,3].map(i=>byW[addDays(ws,-7*i)]).filter(v=>v>0);
+  const perWeek=recent.length>=2?recent.reduce((x,y)=>x+y,0)/recent.length/60:8.5;
+  let weeks=perWeek?remH/perWeek:99;
+  if(t<='2026-12-27'&&addDays(t,Math.ceil(weeks*7))>='2026-12-21')weeks+=0.5;
+  const finish=addDays(t,Math.ceil(weeks*7));
+  return {pace,used,n,remH,perWeek,measuredWeeks:recent.length,finish,end:learnEnd(),slack:diffDays(finish,learnEnd())};
+}
+function splitHours(fromDate){
+  let nw=0,rv=0;arr('sessions').forEach(s=>{if(fromDate&&s.date<fromDate)return;if(NEW_TPLS.has(s.tpl))nw+=s.minutes||0;else rv+=s.minutes||0});
+  return {nw:nw/60,rv:rv/60,share:nw+rv?rv/(nw+rv):null};
+}
+function paceLine(p){
+  if(p.slack>=0)return `<span class="pill good">On track</span> First pass projected to finish <b>${fmt(p.finish)}</b>, ${p.slack} day${p.slack===1?'':'s'} before ${fmt(p.end)}.`;
+  const wl=Math.max(1,diffDays(todayISO(),p.end)/7), extra=Math.max(0.5,Math.ceil((p.remH/wl-p.perWeek)*2)/2);
+  return `<span class="pill bad">Behind</span> First pass projected to finish <b>${fmt(p.finish)}</b>, ${-p.slack} days after ${fmt(p.end)}. About ${extra} more hour${extra===1?'':'s'} a week of new material closes the gap.`;
+}
+function pacePanel(){
+  const p=paceStats(), wk=splitHours(weekStart(todayISO())), all=splitHours(null);
+  return `<section class="panel"><div class="panel-h"><h2>Pace</h2><span class="sub" style="font-size:12.5px">Based on CFA Institute’s time estimate for each module</span></div>
+  <p style="margin:0 0 12px">${paceLine(p)}</p>
+  <div class="stats">
+    <div class="stat"><b class="num">${Math.round(p.used*100)}%</b><span>${p.pace!=null?`of CFA’s time (${p.n} modules timed)`:'assumed until 3 modules are timed'}</span></div>
+    <div class="stat"><b class="num">${p.remH.toFixed(0)} h</b><span>first pass left at this pace</span></div>
+    <div class="stat"><b class="num">${p.perWeek.toFixed(1)} h</b><span>new material a week${p.measuredWeeks>=2?` (last ${p.measuredWeeks} wk)`:' (planned until 2 weeks are logged)'}</span></div>
+    <div class="stat"><b class="num">${all.share==null?'—':Math.round(all.share*100)+'%'}</b><span>review share overall · target ~20%</span></div></div>
+  <p class="sub" style="font-size:12.5px;margin:10px 0 0">This week: ${wk.nw.toFixed(1)} h new material, ${wk.rv.toFixed(1)} h review. Pace counts module and deep-block sessions where you picked the module.</p></section>`;
+}
+
+/* ---------- suggested topic weeks ---------- */
+function suggestWeeks(){
+  const p=planCfg(), t=todayISO(), used=paceStats().used, LEARN_END='2027-03-21';
+  const ci=Math.max(0,p.order.findIndex(k=>{const b=BLOCKS.find(x=>x.k===k);return b&&t>=b.s&&t<=b.e}));
+  const curB=BLOCKS.find(x=>x.k===p.order[ci]);
+  const from=t<START?START:weekStart(t);
+  const elapsed=curB&&from>curB.s?Math.round(diffDays(curB.s,from)/7):0;
+  const W=[];for(let w=from;w<=LEARN_END;w=addDays(w,7))W.push(w==='2026-12-21'?0.5:1);
+  const ks=p.order.slice(ci), h=ks.map(k=>Math.max(0.1,mods(k).filter(m=>!m.done).reduce((a,m)=>a+modEst(k,m),0)*used/60));
+  const H=h.reduce((a,b)=>a+b,0), C=W.reduce((a,b)=>a+b,0);
+  if(W.length<ks.length)return null;
+  const cum=[];W.reduce((a,c,i)=>(cum[i]=a+c),0);
+  const weeks={...p.weeks}; let prev=-1, acc=0;
+  ks.forEach((k,i)=>{
+    acc+=h[i]; const T=C*acc/H, left=ks.length-1-i;
+    let best=prev+1;
+    for(let j=prev+1;j<=W.length-1-left;j++){if(Math.abs(cum[j]-T)<Math.abs(cum[best]-T))best=j}
+    if(i===ks.length-1)best=W.length-1;
+    weeks[k]=(i===0?elapsed:0)+(best-prev); prev=best;
+  });
+  return {weeks,hours:Object.fromEntries(ks.map((k,i)=>[k,h[i]])),used};
 }
 
 /* ---------- routing ---------- */
@@ -469,6 +676,8 @@ function vToday(){
   <header><div class="eyebrow">${esc(parse(t).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}))}</div>
   <h1>${daysLeft>0?daysLeft+' days to the exam window':'Exam window'}</h1>
   <p class="sub">${started?`Current block: <b>${esc(b?blockName(b):'—')}</b>${b&&b.e?` · ${blockLeft} day${blockLeft===1?'':'s'} left`:''}`:`Study starts ${fmt(BLOCKS[0].s)} with ${esc(blockName(BLOCKS[0]))}.`}</p></header>
+  ${catchUp()?`<section class="panel" style="border-color:var(--warn);background:var(--warn-soft)"><b>Catch-up mode.</b> You’re ${behindBy()} modules behind the plan, so revisits drop to 1 a week until you’re back on pace. Anki and Ethics questions continue.</section>`:''}
+  ${rateAfterPanel()}
   <div class="hero">
     <section class="panel next">
       <div class="eyebrow">Next up</div>
@@ -483,7 +692,6 @@ function vToday(){
       <div class="bar ${wk<target*0.6&&dow!==1?'warn':''}" style="margin:8px 0 14px"><i style="width:${Math.min(100,target?wk/target*100:0)}%"></i></div>
       <div class="list">
         <div class="li"><span class="grow">Anki today${ankiStreak()?` · ${ankiStreak()} day streak`:''}</span><button class="small ${ankiDone(t)?'':'primary'}" data-act="anki">${ankiDone(t)?'Done ✓':'Mark done'}</button></div>
-        ${(()=>{const r=revisits().filter(x=>!x.score&&x.date<=addDays(t,6));return r.length?`<a class="li" href="#plan" style="color:inherit;text-decoration:none"><span class="grow">Topic revisits due${r.some(x=>x.date<=t)?'':' this week'}</span><b class="num">${r.map(x=>TOPICS[x.k].short).join(', ')}</b></a>`:''})()}
         ${pendingCards().length?`<a class="li" href="#cards" style="color:inherit;text-decoration:none"><span class="grow">Cards waiting to import</span><b class="num">${pendingCards().length}</b></a>`:''}
         <a class="li" href="#mistakes" style="color:inherit;text-decoration:none"><span class="grow">Mistakes to redo</span><b class="num">${open}</b></a>
         <a class="li" href="#progress" style="color:inherit;text-decoration:none"><span class="grow">Modules done</span><b class="num">${Object.keys(TOPICS).reduce((a,k)=>a+mods(k).filter(m=>m.done).length,0)} / ${Object.keys(TOPICS).reduce((a,k)=>a+mods(k).length,0)}</b></a>
@@ -491,6 +699,8 @@ function vToday(){
       </div>
     </section>
   </div>
+  ${revisitsPanel(true)}
+  ${t>=START&&t<reviewStart()?`<section class="panel" style="padding-block:12px"><p style="margin:0;font-size:14px">${paceLine(paceStats())} <a href="#progress" style="font-size:13px">Pace details</a></p></section>`:''}
   <section class="panel">
     <div class="panel-h"><h2>Recent sessions</h2><a href="#plan" class="sub" style="font-size:13px">See the plan</a></div>
     ${recent.length?`<div class="list">${recent.map(s=>`<div class="li"><div class="grow"><b>${esc(TEMPLATES[s.tpl]?.name||'Session')}</b> · ${esc(TOPICS[s.topic]?.short||'')}${s.module?' · '+esc(s.module):''}<div class="meta">${fmt(s.date)} · ${s.minutes} min${(s.quizzes||[]).filter(q=>q.n).map(q=>` · quiz ${pct(q.c,q.n)}%`).join('')}</div></div>${s.focus?`<span class="pill">Focus ${s.focus}/5</span>`:''}</div>`).join('')}</div>`
@@ -538,17 +748,23 @@ function vProgress(){
     <div class="stat"><b class="num">${Math.round(weighted*100)}%</b><span>of exam weight covered</span></div>
     <div class="stat"><b class="num">${expMods}</b><span>modules planned by today</span></div>
     <div class="stat"><b class="num">${hrsTot.toFixed(1)}</b><span>hours studied</span></div></div>
+  ${pacePanel()}
   <section class="panel"><div class="panel-h"><h2>By topic</h2>${status}</div>
-  <div class="tbl"><table><thead><tr><th>Topic</th><th style="width:32%">Modules</th><th>Hours</th><th>Quiz avg</th><th>Cards</th><th>Open misses</th></tr></thead><tbody>
+  <div class="tbl"><table><thead><tr><th>Topic</th><th style="width:32%">Modules</th><th>Hours</th><th>Quiz avg</th><th>Weakest</th><th>Open misses</th></tr></thead><tbody>
   ${rows.map(r=>{const behind=r.frac+1e-9<r.exp-0.15;return `<tr><td><b>${esc(TOPICS[r.k].short)}</b><div style="font-size:12px;color:var(--muted)">${TOPICS[r.k].w}</div></td>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="bar ${behind?'warn':''}" style="flex:1;position:relative;overflow:visible"><i style="width:${r.frac*100}%"></i>${r.exp>0&&r.exp<1||r.exp===1&&r.frac<1?`<span title="Planned by today" style="position:absolute;top:-3px;bottom:-3px;left:calc(${r.exp*100}% - 1px);width:2px;background:var(--ink);border-radius:1px"></span>`:''}</div><span class="num" style="font-size:12.5px;white-space:nowrap">${r.done}/${r.total}</span></div></td>
-    <td class="num">${(r.mins/60).toFixed(1)}</td><td class="num">${r.avg==null?'—':`<span class="pill ${r.avg>=65?'good':r.avg>=55?'warn':'bad'}">${r.avg}%</span>`}</td><td class="num">${r.cards}</td><td class="num">${r.open}</td></tr>`}).join('')}
+    <td class="num">${(r.mins/60).toFixed(1)}</td><td class="num">${r.avg==null?'—':`<span class="pill ${r.avg>=65?'good':r.avg>=55?'warn':'bad'}">${r.avg}%</span>`}</td><td>${(()=>{const w=weakest(r.k);return w?`<span class="pill ${RATING[w].c}">${w} · ${RATING[w].l}</span>`:'<span class="meta">—</span>'})()}</td><td class="num">${r.open}</td></tr>`}).join('')}
   </tbody></table></div></section>
-  <section class="panel"><div class="panel-h"><h2>Modules</h2><span class="sub" style="font-size:12.5px">Rename or add modules to match Schweser exactly</span></div>
+  ${(()=>{const oc=Object.keys(TOPICS).flatMap(k=>doneMods(k).filter(m=>overconfident(k,m)).map(m=>({k,m})));const uc=Object.keys(TOPICS).flatMap(k=>doneMods(k).filter(m=>underconfident(m)).map(m=>({k,m})));
+    return oc.length||uc.length?`<section class="panel"><h2 style="margin-bottom:8px">Rating vs results</h2>
+    ${oc.length?`<h3 style="margin:0 0 4px">Overconfident <span class="meta" style="font-weight:400">rated 3+ but scoring under 65%. Highest priority</span></h3><div class="list">${oc.map(({k,m})=>`<div class="li" style="flex-wrap:wrap"><span class="pill">${esc(TOPICS[k].short)}</span><span class="grow">${esc(m.name)}</span><span class="meta">rated ${m.rating}${moduleScore(m.id)!=null?' · scored '+moduleScore(m.id)+'%':''}</span>${ratingChips(k,m,'progress')}</div>`).join('')}</div>`:''}
+    ${uc.length?`<h3 style="margin:12px 0 4px">Doing better than you think <span class="meta" style="font-weight:400">rated 1–2 but scoring 75%+</span></h3><div class="list">${uc.map(({k,m})=>`<div class="li" style="flex-wrap:wrap"><span class="pill">${esc(TOPICS[k].short)}</span><span class="grow">${esc(m.name)}</span><span class="meta">rated ${m.rating} · scored ${moduleScore(m.id)}%</span>${ratingChips(k,m,'progress')}</div>`).join('')}</div>`:''}</section>`:''})()}
+  <section class="panel"><div class="panel-h"><h2>Modules</h2><span class="sub" style="font-size:12.5px">Tick, rate, reorder or add modules</span></div>
+  <details style="margin-bottom:8px"><summary>What the ratings mean</summary>${ratingLegend()}</details>
   <div class="list">${rows.map(r=>`<details class="li" style="display:block" data-topic="${r.k}" ${openTopics.has(r.k)?'open':''}>
-    <summary style="display:flex;gap:10px;align-items:center;color:var(--ink)"><b class="grow">${esc(TOPICS[r.k].name)}</b><span class="num" style="color:var(--muted)">${r.done}/${r.total}</span></summary>
+    <summary style="display:flex;gap:10px;align-items:center;color:var(--ink)"><b class="grow">${esc(TOPICS[r.k].name)}</b>${doneMods(r.k).some(m=>!m.rating)?`<span class="pill warn">${doneMods(r.k).filter(m=>!m.rating).length} to rate</span>`:''}<span class="num" style="color:var(--muted)">${r.done}/${r.total}</span></summary>
     <div style="padding:8px 0 4px;display:flex;flex-direction:column;gap:2px">
-    ${mods(r.k).map(m=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0"><label class="chk grow"><input type="checkbox" data-act="moddone" data-topic="${r.k}" data-id="${m.id}" ${m.done?'checked':''}><span style="${m.done?'color:var(--muted);text-decoration:line-through':''}">${esc(m.name)}</span></label>${m.doneOn?`<span class="pill num">${fmt(m.doneOn)}</span>`:''}<button class="ghost small" data-act="modmove" data-dir="-1" data-topic="${r.k}" data-id="${m.id}" aria-label="Move up">↑</button><button class="ghost small" data-act="modmove" data-dir="1" data-topic="${r.k}" data-id="${m.id}" aria-label="Move down">↓</button><button class="ghost small" data-act="moddel" data-topic="${r.k}" data-id="${m.id}" aria-label="Remove module">✕</button></div>`).join('')}
+    ${mods(r.k).map(m=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0;flex-wrap:wrap"><label class="chk grow" style="min-width:180px"><input type="checkbox" data-act="moddone" data-topic="${r.k}" data-id="${m.id}" ${m.done?'checked':''}><span style="${m.done?'color:var(--muted)':''}">${esc(m.name)}</span></label><span class="meta num" title="CFA Institute time estimate" style="white-space:nowrap">${Math.round(modEst(r.k,m)/6)/10} h</span>${m.doneOn?`<span class="pill num">${fmt(m.doneOn)}</span>`:''}${m.done?ratingChips(r.k,m,'progress'):''}<button class="ghost small" data-act="modmove" data-dir="-1" data-topic="${r.k}" data-id="${m.id}" aria-label="Move up">↑</button><button class="ghost small" data-act="modmove" data-dir="1" data-topic="${r.k}" data-id="${m.id}" aria-label="Move down">↓</button><button class="ghost small" data-act="moddel" data-topic="${r.k}" data-id="${m.id}" aria-label="Remove module">✕</button></div>`).join('')}
     <div class="row" style="margin-top:6px"><label>Add a module<input id="modAdd_${r.k}" placeholder="Module name as it appears in Schweser"></label><div class="fit"><button class="small" data-act="modadd" data-topic="${r.k}">Add</button></div></div>
     </div></details>`).join('')}</div></section>`;
 }
@@ -611,6 +827,8 @@ function stepBody(st){
       <div class="row"><label>Questions<input id="q_n_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="n" value="${q.n}"></label>
       <label>Correct<input id="q_c_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="c" value="${q.c}"></label>
       <div class="fit" style="padding-bottom:8px"><span class="num" style="font-size:20px;font-weight:600">${q.n?pct(q.c,q.n)+'%':'—'}</span></div></div></section>
+      ${run.tpl==='mixed'?(()=>{const w=Object.keys(TOPICS).flatMap(k=>doneMods(k).map(m=>({k,m}))).sort((a,b)=>(overconfident(b.k,b.m)?1:0)-(overconfident(a.k,a.m)?1:0)||(a.m.rating??2.5)-(b.m.rating??2.5)).slice(0,6);
+        return w.length?`<section class="panel"><h2 style="margin-bottom:8px">Build this set from your weakest modules</h2><div class="list">${w.map(({k,m})=>`<div class="li"><span class="pill">${esc(TOPICS[k].short)}</span><span class="grow">${esc(m.name)}</span>${m.rating?`<span class="pill ${RATING[m.rating].c}">${m.rating}</span>`:'<span class="meta">unrated</span>'}${overconfident(k,m)?'<span class="pill bad">⚑</span>':''}</div>`).join('')}</div></section>`:''})():''}
       ${mistakeForm(topic)}`;
   }
   if(st.type==='capture'){
@@ -677,6 +895,8 @@ function vFinish(){
     <div class="stat"><b>${run.data.mistakes.length}</b><span>mistakes logged</span></div></div>
     <label>How focused were you?<select id="fFocus"><option value="">Skip</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n} — ${['','Distracted','Patchy','OK','Mostly focused','Locked in'][n]}</option>`).join('')}</select></label>
     ${run.moduleId&&mods(run.topic).find(m=>m.id===run.moduleId)?`<label class="chk" style="margin-top:12px"><input type="checkbox" id="fModDone" ${mods(run.topic).find(m=>m.id===run.moduleId).done||run.tpl!=='module'?'':'checked'}> Mark “${esc(mods(run.topic).find(m=>m.id===run.moduleId).name)}” complete</label>`:''}
+    ${(()=>{const m=run.moduleId&&mods(run.topic).find(x=>x.id===run.moduleId);return m?`<div style="margin-top:14px"><div style="font-size:13px;color:var(--muted);font-weight:500;margin-bottom:6px">How well can you do “${esc(m.name)}” now?</div>
+      <div class="rate-big">${[1,2,3,4].map(r=>`<button type="button" class="${m.rating===r?'on '+RATING[r].c:''}" data-act="modrate" data-topic="${run.topic}" data-id="${m.id}" data-r="${r}" data-src="session" aria-pressed="${m.rating===r}"><b>${r} · ${RATING[r].l}</b><span>${RATING[r].d}</span></button>`).join('')}</div></div>`:''})()}
     <label style="margin-top:10px">Note for next time<input id="fNote" placeholder="e.g. Start with the video next time on this topic"></label>
     <div class="ctrl" style="margin-top:14px"><button class="primary" data-act="savesession">Save session</button><button data-act="backto">Back to steps</button></div></section>`;
 }
@@ -688,7 +908,11 @@ function planEditor(){
   return `<section class="panel"><details ${planOpen?'open':''} id="planEd"><summary style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><h2 style="color:var(--ink)">Topic order and weeks</h2>${warn}</summary>
   <p class="sub" style="font-size:13px;margin:10px 0">Move topics to match the order you study in. Dates, sessions and revisits update automatically.</p>
   <div class="ctrl" style="margin-bottom:10px"><button class="small" data-act="planpreset" data-p="schweser">Use Schweser order</button><button class="small" data-act="planpreset" data-p="default">Use Ethics-first order</button></div>
-  <div class="list">${p.order.map((k,i)=>{const b=BLOCKS.find(x=>x.k===k);return `<div class="li" style="flex-wrap:wrap"><span class="pill num">${i+1}</span><div class="grow"><b>${esc(TOPICS[k].name)}</b><div class="meta">${fmt(b.s)} – ${fmt(b.e)}</div></div>
+  ${(()=>{const sg=suggestWeeks();if(!sg)return '';const diff=p.order.filter(k=>sg.weeks[k]!==(p.weeks[k]||1));
+    return `<div class="panel" style="background:var(--bg);margin-bottom:10px;padding:12px 14px"><div class="panel-h" style="margin-bottom:6px"><h3>Suggested weeks</h3>${diff.length?`<button class="small primary" data-act="applyweeks">Apply suggestion</button>`:'<span class="pill good">Your plan matches</span>'}</div>
+    <p class="sub" style="font-size:12.5px;margin:0 0 6px">From CFA Institute’s hours for the modules you haven’t done, at ${Math.round(sg.used*100)}% of CFA’s time, fitted to ${fmt('2027-03-21')}. Christmas week counts as half.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${p.order.map(k=>`<span class="pill ${sg.weeks[k]!==(p.weeks[k]||1)?'acc':''}">${esc(TOPICS[k].short)} ${p.weeks[k]||1}${sg.weeks[k]!==(p.weeks[k]||1)?' → '+sg.weeks[k]:''} wk</span>`).join('')}</div></div>`})()}
+  <div class="list">${p.order.map((k,i)=>{const b=BLOCKS.find(x=>x.k===k);return `<div class="li" style="flex-wrap:wrap"><span class="pill num">${i+1}</span><div class="grow"><b>${esc(TOPICS[k].name)}</b><div class="meta">${fmt(b.s)} – ${fmt(b.e)} · ~${(mods(k).filter(m=>!m.done).reduce((a,m)=>a+modEst(k,m),0)*paceStats().used/60).toFixed(0)} h left at your pace</div></div>
     <div class="ctrl" style="align-items:center;gap:4px"><button class="ghost small" data-act="planweeks" data-k="${k}" data-d="-1" aria-label="Fewer weeks" ${(p.weeks[k]||1)<=1?'disabled':''}>−</button><span class="num" style="min-width:52px;text-align:center">${p.weeks[k]||1} wk</span><button class="ghost small" data-act="planweeks" data-k="${k}" data-d="1" aria-label="More weeks">+</button>
     <button class="ghost small" data-act="planmove" data-i="${i}" data-d="-1" aria-label="Move up" ${i===0?'disabled':''}>↑</button><button class="ghost small" data-act="planmove" data-i="${i}" data-d="1" aria-label="Move down" ${i===9?'disabled':''}>↓</button></div></div>`}).join('')}</div>
   </details></section>`;
@@ -712,12 +936,8 @@ function vPlan(){
   <section class="panel"><h2 style="margin-bottom:8px">Weekly hours</h2><div class="tbl"><table><thead><tr><th>Week of</th><th>Focus</th><th>Logged</th><th style="width:30%">vs target</th></tr></thead><tbody>
   ${weeks.map(w=>{const b=blockFor(addDays(w,3))||blockFor(w);const h=(mw[w]||0)/60,tg=weekTarget(w),cur=t>=w&&t<=addDays(w,6),past=addDays(w,6)<t;return `<tr class="${cur?'now':''}"><td class="num" style="white-space:nowrap">${fmt(w)}</td><td>${esc(b?(TOPICS[b.k]?.short||blockName(b)):'')}</td><td class="num" style="white-space:nowrap">${hrs(h*60)} / ${tg}h</td><td><div class="bar ${past&&h<tg*0.8?'warn':''}"><i style="width:${Math.min(100,tg?h/tg*100:0)}%"></i></div></td></tr>`}).join('')}
   </tbody></table></div></section>
-  <section class="panel"><div class="panel-h"><h2>Topic revisits</h2><span class="sub" style="font-size:12.5px">1, 3 and 8 weeks after each topic finishes</span></div>
-  <p class="sub" style="margin:-4px 0 10px;font-size:13px">A drop of up to 10 points from the original score is normal. More than that means one extra session on the topic before its next revisit.</p>
-  ${(()=>{const all=revisits(),due=all.filter(r=>!r.score&&r.date<=addDays(t,6)),later=all.filter(r=>!r.score&&r.date>addDays(t,6)),logged=all.filter(r=>r.score);
-  return `${due.length?`<h3 style="margin:4px 0 4px">Due now</h3>${revisitRows(due,true)}`:'<div class="empty">No revisits due this week.</div>'}
-  ${logged.length?`<h3 style="margin:14px 0 4px">Logged</h3>${revisitRows(logged,false)}`:''}
-  <details style="margin-top:12px"><summary>Upcoming (${later.length})</summary>${revisitRows(later,false)}</details>`})()}</section>
+  ${rateAfterPanel()}
+  ${revisitsPanel(false)}
   <section class="panel"><h2 style="margin-bottom:8px">Checkpoints</h2><div class="list">${checkpoints().map(c=>`<div class="li"><span class="pill ${t>c.d?'':'acc'} num">${fmt(c.d)}</span><span class="grow">${esc(c.t)}</span></div>`).join('')}
   <div class="li"><span class="pill num">Each topic</span><span class="grow">65%+ on that topic’s test before moving on; below that, add one extra session.</span></div></div></section>`;
 }
@@ -842,7 +1062,7 @@ document.addEventListener('click',async e=>{
   else if(a==='savesession'){
     const mins=Math.max(1,Math.round(run.steps.reduce((x,_,i)=>x+stepElapsed(i),0)/60));
     const d=run.data, id=uid(), t=todayISO();
-    const doc={date:t,ts:Date.now(),tpl:run.tpl,topic:run.topic,module:run.module,minutes:mins,planned:run.steps.reduce((x,s)=>x+s.m,0),
+    const doc={date:t,ts:Date.now(),tpl:run.tpl,topic:run.topic,module:run.module,moduleId:run.moduleId||null,minutes:mins,planned:run.steps.reduce((x,s)=>x+s.m,0),
       quizzes:d.quizzes.filter(q=>q.n).map(q=>({topic:q.topic,n:+q.n,c:+q.c})),blurt:d.blurt,gaps:d.gaps,focus:+$('#fFocus').value||null,note:$('#fNote').value.trim()};
     const formulas=(d.formulas||'').trim();
     const markDone=$('#fModDone')?.checked, modId=run.moduleId;
@@ -879,9 +1099,12 @@ document.addEventListener('click',async e=>{
     const url=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));const el=document.createElement('a');el.href=url;el.download='cfa-anki-'+todayISO()+'.txt';document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
   else if(a==='signout'){await signOut()}
   else if(a==='ankiadded'){const p=pendingCards();for(const c of p){const {id,...rest}=c;await put('cards',id,{...rest,added:true,addedOn:todayISO()})}forceRender();toast(p.length+' cards marked as in Anki')}
-  else if(a==='logrev'){const k=b.dataset.k,n=+b.dataset.n,c=+$('#rvC_'+k+'_'+n).value,o=+$('#rvN_'+k+'_'+n).value;
+  else if(a==='logrev'){const k=b.dataset.k,c=+$('#rvC_'+k).value,o=+$('#rvN_'+k).value;
     if(!o||c>o||c<0){toast('Enter correct and out of, e.g. 21 of 30');return}
-    await put('scores',uid(),{type:'revisit',rev:n,topic:k,date:todayISO(),c,n:o,pct:pct(c,o)});forceRender();toast('Revisit logged')}
+    await put('scores',uid(),{type:'revisit',rev:revLogs(k).length+1,topic:k,date:todayISO(),ts:Date.now(),c,n:o,pct:pct(c,o)});rateAfter=k;forceRender();window.scrollTo(0,0);toast('Revisit logged. Now rate the modules')}
+  else if(a==='modrate'){const k=b.dataset.topic,id=b.dataset.id,r=+b.dataset.r;openTopics.add(k);await setRating(k,id,r,b.dataset.src||'progress');forceRender()}
+  else if(a==='rateafterdone'){rateAfter=null;forceRender()}
+  else if(a==='applyweeks'){const sg=suggestWeeks();if(sg){const p=planCfg();await savePlan({order:[...p.order],weeks:sg.weeks});toast('Plan weeks updated')}}
   else if(a==='delcard'){await del('cards',b.dataset.id);forceRender()}
   else if(a==='startreview'){review={cards:dueCards().sort(()=>Math.random()-.5),i:0,flip:false};forceRender()}
   else if(a==='flip'){review.flip=true;forceRender()}
