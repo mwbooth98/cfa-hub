@@ -329,7 +329,8 @@ function makeClient(){sb=supabase.createClient(CFG.url,CFG.key,{auth:{storage:tr
 async function put(c,id,data){
   S[c][id]=data; render();
   const {error}=await sb.from('docs').upsert({user_id:user.id,coll:c,id,data,updated_at:new Date().toISOString()},{onConflict:'user_id,coll,id'});
-  if(error)handleErr(error);
+  if(error){handleErr(error);return false}
+  return true;
 }
 async function del(c,id){
   delete S[c][id]; render();
@@ -829,7 +830,8 @@ function stepBody(st){
       <div class="fit" style="padding-bottom:8px"><span class="num" style="font-size:20px;font-weight:600">${q.n?pct(q.c,q.n)+'%':'—'}</span></div></div></section>
       ${run.tpl==='mixed'?(()=>{const w=Object.keys(TOPICS).flatMap(k=>doneMods(k).map(m=>({k,m}))).sort((a,b)=>(overconfident(b.k,b.m)?1:0)-(overconfident(a.k,a.m)?1:0)||(a.m.rating??2.5)-(b.m.rating??2.5)).slice(0,6);
         return w.length?`<section class="panel"><h2 style="margin-bottom:8px">Build this set from your weakest modules</h2><div class="list">${w.map(({k,m})=>`<div class="li"><span class="pill">${esc(TOPICS[k].short)}</span><span class="grow">${esc(m.name)}</span>${m.rating?`<span class="pill ${RATING[m.rating].c}">${m.rating}</span>`:'<span class="meta">unrated</span>'}${overconfident(k,m)?'<span class="pill bad">⚑</span>':''}</div>`).join('')}</div></section>`:''})():''}
-      ${mistakeForm(topic)}`;
+      ${mistakeForm(topic)}
+      ${sessionMistakes()}`;
   }
   if(st.type==='capture'){
     const gaps=captureLines();
@@ -841,7 +843,7 @@ function stepBody(st){
       ${cardForm('run')}
       ${d.cards.length?`<div class="list" style="margin-top:10px">${d.cards.map(c=>`<div class="li"><div class="grow"><b>${esc(c.front)}</b><div class="meta">${esc(c.back)}</div></div></div>`).join('')}</div>`:''}
     </section>
-    ${d.mistakes.length?`<section class="panel"><h2>Logged this session</h2><div class="list">${d.mistakes.map(m=>`<div class="li"><span class="pill warn">${TAGS[m.tag]}</span><div class="grow">${esc(m.qid||'Question')} — ${esc(m.why)}</div></div>`).join('')}</div></section>`:''}`;
+    ${sessionMistakes()}`;
   }
   if(st.type==='cards'){
     const done=ankiDone(todayISO());
@@ -871,12 +873,18 @@ function scratchPanel(st){
     <textarea id="fScratch" data-bind="scratch" style="min-height:90px" placeholder="e.g. Why is FIFO COGS lower when prices rise?&#10;PV of perpetuity = PMT / r">${esc(run.data.scratch||'')}</textarea>
     <p class="sub" style="font-size:12.5px;margin-top:6px">Don’t summarise the notes here. Each line becomes a flashcard or formula in Capture.</p></section>`;
 }
+function sessionMistakes(){
+  const ms=run?.data.mistakes||[];
+  return ms.length?`<section class="panel"><h2>Logged this session</h2><div class="list">${ms.map(m=>`<div class="li"><span class="pill warn">${TAGS[m.tag]}</span><div class="grow">${esc(m.qid||'Question')} — ${esc(m.why)}</div></div>`).join('')}</div></section>`:'';
+}
+let mDraft=null; // a miss that failed to save, put back in the form so it isn't lost
 function mistakeForm(topic){
+  const d=mDraft||{};
   return `<section class="panel"><h2 style="margin-bottom:10px">Log a miss</h2>
-  <div class="row"><label>Question ID<input id="mQid" placeholder="e.g. Q1043"></label>
-  <label>Reason<select id="mTag">${Object.entries(TAGS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label></div>
-  <div class="row" style="margin-top:8px"><label>Why you got it wrong<input id="mWhy" placeholder="e.g. used annual instead of semi-annual periods"></label></div>
-  <div class="row" style="margin-top:8px"><label>Rule to remember<input id="mRule" placeholder="e.g. bonds: N = years × 2, I/Y = YTM ÷ 2"></label>
+  <div class="row"><label>Question ID<input id="mQid" placeholder="e.g. Q1043" value="${esc(d.qid||'')}"></label>
+  <label>Reason<select id="mTag">${Object.entries(TAGS).map(([k,v])=>`<option value="${k}" ${k===d.tag?'selected':''}>${v}</option>`).join('')}</select></label></div>
+  <div class="row" style="margin-top:8px"><label>Why you got it wrong<input id="mWhy" placeholder="e.g. used annual instead of semi-annual periods" value="${esc(d.why||'')}"></label></div>
+  <div class="row" style="margin-top:8px"><label>Rule to remember<input id="mRule" placeholder="e.g. bonds: N = years × 2, I/Y = YTM ÷ 2" value="${esc(d.rule||'')}"></label>
   <div class="fit"><button data-act="addmistake" data-topic="${topic}">Log it</button></div></div></section>`;
 }
 function cardForm(ctx){
@@ -1071,7 +1079,7 @@ document.addEventListener('click',async e=>{
     location.hash='today';
     await put('sessions',id,doc);
     for(const c of cards) await put('cards',uid(),newCard(c.front,c.back,c.topic));
-    for(const m of ms) await put('mistakes',uid(),m);
+    for(const {saved,...m} of ms) if(!saved) await put('mistakes',uid(),m); // older drafts held mistakes until the session was saved
     if(markDone&&modId)await saveMods(doc.topic,mods(doc.topic).map(m=>m.id===modId?{...m,done:true,doneOn:t}:m));
     if(formulas){const n=S.notes[doc.topic]||{};await put('notes',doc.topic,{...n,formulas:((n.formulas||'').trim()+'\n'+formulas).trim()})}
     toast('Session saved');
@@ -1079,8 +1087,14 @@ document.addEventListener('click',async e=>{
   else if(a==='addmistake'){
     const why=$('#mWhy').value.trim(); if(!why){$('#mWhy').focus();toast('Add why you got it wrong');return}
     const m={date:todayISO(),topic:b.dataset.topic,qid:$('#mQid').value.trim(),tag:$('#mTag').value,why,rule:$('#mRule').value.trim(),redone:false};
-    if(run&&view==='session'){syncBinds();run.data.mistakes.push(m);saveRun();forceRender();toast('Logged — saved when you finish')}
-    else{await put('mistakes',uid(),m);render.force=true;render();toast('Mistake logged')}
+    // Save straight to the mistake log, also during a session, so a miss is never lost if the session is discarded or the tab closes.
+    const id=uid(), inSession=run&&view==='session';
+    if(inSession)syncBinds();
+    const ok=await put('mistakes',id,m);
+    if(!ok){delete S.mistakes[id];mDraft=m;forceRender();return}
+    mDraft=null;
+    if(inSession&&run){run.data.mistakes.push({...m,id,saved:true});saveRun()}
+    forceRender();toast('Mistake logged')
   }
   else if(a==='gapfront'){const g=captureLines()[+b.dataset.i];const f=$('#cFront_run');f.value=g;$('#cBack_run').focus()}
   else if(a==='addcard'){
