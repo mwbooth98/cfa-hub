@@ -13,7 +13,9 @@ Marcus's personal study app for the CFA Level I exam (May 11–17, 2027). Read t
 - `modules/<topicKey>` → `{items:[{id,name,est,done,doneOn,rating,ratedOn,hist[]}]}`. `est` = CFA Institute planner minutes.
 - `sessions/<id>` → `{date,ts,tpl,topic,module,moduleId,minutes,quizzes[],focus,note,...}`. `tpl` ∈ module, deep (new material) | review, mixed, mock (review).
 - `scores/<id>` → `{type: test|quiz|checkpoint|mock|revisit, topic, date, c, n, pct, rev}`.
-- `cards`, `mistakes`, `notes/<topicKey>`, `checkins/<date>` (Anki done), `settings/plan` ({order, weeks}), `settings/curriculum` ({v}).
+- `notes/<topicKey>` → `{formulas, notes, mods:{<moduleId>:{formulas, notes}}}`: one collapsible section per module (subtopics are CFA modules); the top-level fields are the General section. Capture appends formulas to the session's module.
+- `mistakes` and `cards` carry an optional `moduleId`; Anki export tags are `cfa::<topic>::<moduleId>_<slug>`.
+- `cards`, `mistakes`, `checkins/<date>` (Anki done), `settings/plan` ({order, weeks}), `settings/curriculum` ({v}).
 - Topic keys: ethics, quant, econ, corp, fsa, equity, fi, deriv, alts, pm. Never rename keys or module ids; data is keyed on them.
 - Curriculum changes go through `CURRICULUM` + `migrateCurriculum()` (bump `CURRICULUM_V`), which preserves done/rating by module id.
 

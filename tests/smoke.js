@@ -161,9 +161,60 @@ async function runToFinish(page,tpl){
   console.log('Notes save straight away when you leave the page (10)');
   {
     const page=await open(browser);
-    await go(page,'notes');await page.fill('#nNotes','FIFO: lower COGS when prices rise');
+    await go(page,'notes');await page.click('details.sec[data-sec=general] > summary');await page.fill('#nN_general','FIFO: lower COGS when prices rise');
     await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await page.waitForTimeout(50);
     check((await db(page,'notes'))[0]?.data.notes==='FIFO: lower COGS when prices rise','note saved without waiting');
+    await page.context().close();
+  }
+
+  console.log('Notes and formulas by module (27, 14)');
+  {
+    const page=await open(browser);
+    await go(page,'notes');
+    check(await page.$$eval('details.sec',d=>d.length)===3,'General plus one section per Quant module');
+    await page.click('details.sec[data-sec=q1] > summary');
+    await page.fill('#nF_q1','HPR = (P1 - P0 + D) / P0\nGeometric mean = [(1+R1)...(1+Rn)]^(1/n) - 1');
+    await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await page.waitForTimeout(50);
+    const n=(await db(page,'notes')).find(r=>r.id==='quant')?.data;
+    check(/HPR/.test(n?.mods?.q1?.formulas||''),'formulas saved under the module');
+    check(/2 formulas/.test(await page.textContent('details.sec[data-sec=q1] summary')),'closed heading counts formulas');
+    await page.reload();await page.waitForFunction(()=>document.querySelector('#sync')?.textContent.startsWith('Synced'));await go(page,'notes');
+    check(await page.$eval('details.sec[data-sec=q1]',d=>d.open),'open sections are remembered');
+    await page.fill('#nSearch','geometric');
+    check(await page.$eval('details.sec[data-sec=q2]',d=>d.hidden)&&!(await page.$eval('details.sec[data-sec=q1]',d=>d.hidden)),'search shows only matching modules');
+    await page.fill('#nSearch','');
+    await page.click('[data-act=testmode]');
+    await page.fill('#nRecall','HPR = (P1 - P0 + D) / P0');await page.click('[data-act=testcompare]');
+    check(/1 of 2/.test(await page.textContent('#view')),'test me scores 1 of 2 recalled');
+    check(await page.$$eval('.cmp .miss',e=>e.length)===1,'the missed formula is marked');
+    await page.context().close();
+  }
+
+  console.log('Capture, mistakes and cards carry the module (27, 15, 21)');
+  {
+    const page=await open(browser);
+    await go(page,'session');await page.click('[data-act=begin]'); // first open Quant module is q2
+    await page.click('[data-act=goto][data-i="3"] >> visible=true');
+    check(await page.inputValue('#mMod')==='q2','mistake form defaults to the session module');
+    await page.fill('#mWhy','forgot to annualise');await page.click('[data-act=addmistake]');await page.waitForTimeout(80);
+    await page.click('[data-act=goto][data-i="4"] >> visible=true');
+    await page.fill('#fForm','Annualised return = (1 + r)^(365/t) - 1');
+    await page.fill('#cFront_run','Annualise a 90-day return?');await page.fill('#cBack_run','(1 + r)^(365/90) - 1');await page.click('[data-act=addcard]');
+    await toEnd(page);await page.click('[data-act=savesession]');await page.waitForTimeout(150);
+    const n=(await db(page,'notes')).find(r=>r.id==='quant')?.data;
+    check(/Annualised/.test(n?.mods?.q2?.formulas||'')&&!n?.formulas,'captured formula went to the module section');
+    check((await db(page,'mistakes'))[0]?.data.moduleId==='q2','mistake saved with its module');
+    check((await db(page,'cards'))[0]?.data.moduleId==='q2','card saved with its module');
+    await go(page,'cards');
+    const [dl]=await Promise.all([page.waitForEvent('download'),page.click('[data-act=ankidl]')]);
+    const txt=fs.readFileSync(await dl.path(),'utf8');
+    check(/#deck:CFA Level I/.test(txt)&&/#tags column:3/.test(txt)&&/\tcfa::quant::q2_types_of_financial_returns/.test(txt),'Anki file names deck, tags column and module tag');
+    await go(page,'mistakes');
+    check(/Quant/.test(await page.textContent('#view table'))&&/Types of Financial Returns/.test(await page.textContent('#view .list')),'mistakes show by topic with the module');
+    await go(page,'progress');
+    await page.evaluate(()=>{document.querySelector('details[data-topic=quant]').open=true});
+    await page.click('[data-act=opennote][data-id=q2]');await page.waitForTimeout(100);
+    check(await page.evaluate(()=>location.hash)==='#notes'&&await page.$eval('details.sec[data-sec=q2]',d=>d.open),'Progress links straight to the module notes');
     await page.context().close();
   }
 
