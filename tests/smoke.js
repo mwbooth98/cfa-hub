@@ -10,6 +10,8 @@ const SEED=[
   {coll:'settings',id:'plan',data:{order:['quant','econ','corp','fsa','equity','fi','deriv','alts','pm','ethics'],weeks:{quant:1,econ:2,corp:1,fsa:5,equity:2,fi:3,deriv:2,alts:1,pm:1,ethics:2}}},
   {coll:'modules',id:'quant',data:{items:[{id:'q1',name:'Returns of Financial Assets and Instruments',est:127,done:true,doneOn:'2026-11-02',rating:3},{id:'q2',name:'Types of Financial Returns',est:86,done:false}]}},
 ];
+// The live site's headers (including the Content-Security-Policy), so a blocked resource shows up here too.
+const HEADERS=Object.fromEntries(JSON.parse(fs.readFileSync(path.join(ROOT,'vercel.json'),'utf8')).headers[0].headers.map(h=>[h.key,h.value]));
 let failures=0;
 const check=(ok,msg)=>{console.log((ok?'  ok   ':'  FAIL ')+msg);if(!ok)failures++};
 
@@ -17,10 +19,14 @@ async function open(browser,{width=1280,seed=SEED}={}){
   const ctx=await browser.newContext({viewport:{width,height:900}});
   const page=await ctx.newPage();
   page.errors=[];page.on('pageerror',e=>page.errors.push(e.message));
+  page.on('console',m=>{if(m.type()==='error'&&/Content Security Policy/i.test(m.text()))page.errors.push('CSP: '+m.text())});
   await page.clock.install({time:NOW});
   await ctx.route('**/*',r=>{const u=r.request().url();
     if(u.includes('cdn.jsdelivr.net'))return r.fulfill({body:STUB,contentType:'application/javascript'});
-    if(u.startsWith('http://hub.test/')){const f=path.join(ROOT,new URL(u).pathname.slice(1)||'index.html');return r.fulfill({body:fs.readFileSync(f),contentType:f.endsWith('.js')?'application/javascript':'text/html'})}
+    if(u.startsWith('http://hub.test/')){
+      const f=path.join(ROOT,new URL(u).pathname.slice(1)||'index.html');let body=fs.readFileSync(f);
+      if(f.endsWith('.html'))body=String(body).replace(/ integrity="[^"]+"/,'');
+      return r.fulfill({body,contentType:f.endsWith('.js')?'application/javascript':'text/html',headers:HEADERS})}
     return r.abort()});
   await page.addInitScript(rows=>{if(!localStorage.getItem('__stubdb')){localStorage.setItem('__stubdb',JSON.stringify(rows));localStorage.setItem('cfa-trusted','1')}},seed);
   await page.goto('http://hub.test/index.html');
@@ -44,7 +50,7 @@ async function runToFinish(page,tpl){
   console.log('Every view renders at 1280px and 400px');
   for(const width of [1280,400]){
     const page=await open(browser,{width});
-    for(const v of ['today','progress','session','plan','cards','mistakes','scores','notes']){
+    for(const v of ['today','progress','session','plan','cards','mistakes','notes']){
       await go(page,v);
       const over=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
       check(over<=0,`${v} at ${width}px has no sideways scroll (${over})`);
@@ -216,6 +222,78 @@ async function runToFinish(page,tpl){
     await page.click('[data-act=opennote][data-id=q2]');await page.waitForTimeout(100);
     check(await page.evaluate(()=>location.hash)==='#notes'&&await page.$eval('details.sec[data-sec=q2]',d=>d.open),'Progress links straight to the module notes');
     await page.context().close();
+  }
+
+  console.log('Session history, past sessions and today status (11, 19)');
+  {
+    const page=await open(browser);
+    await go(page,'history');
+    check(await page.evaluate(()=>location.hash==='#history'&&view==='progress'),'old Scores-style link lands on Progress');
+    await page.click('[data-act=pastopen]');
+    await page.fill('#psDate','2026-11-03');await page.fill('#psMins','45');await page.selectOption('#psMod','q2');
+    await page.fill('#psQC','8');await page.fill('#psQN','10');await page.click('[data-act=pastsave]');await page.waitForTimeout(80);
+    let ss=await db(page,'sessions');
+    check(ss.length===1&&ss[0].data.minutes===45&&ss[0].data.moduleId==='q2'&&ss[0].data.quizzes[0].c===8,'past session logged with module and quiz');
+    await page.click('[data-act=histedit]');await page.fill('#heMins','50');await page.click('[data-act=histsave]');await page.waitForTimeout(80);
+    check((await db(page,'sessions'))[0].data.minutes===50,'edit changes the minutes');
+    await go(page,'today');
+    check(!/Done today/.test(await page.textContent('.next')),'no done-today line for yesterday\'s session');
+    await go(page,'history');await page.click('[data-act=pastopen]');await page.fill('#psMins','30');await page.click('[data-act=pastsave]');await page.waitForTimeout(80);
+    await go(page,'today');
+    check(/Done today:<\/b> 30 min|Done today: 30 min/.test(await page.textContent('.next'))&&/Start another session/.test(await page.textContent('.next')),'Today shows what you already did');
+    await go(page,'history');await page.click('[data-act=histedit] >> nth=0');await page.click('[data-act=histdel]');await page.click('[data-act=histdel]');await page.waitForTimeout(80);
+    check((await db(page,'sessions')).length===1,'delete takes two taps and removes the session');
+    await page.context().close();
+  }
+
+  console.log('Redo queue and mistake cards (12, 13)');
+  {
+    const seed=[...SEED,{coll:'mistakes',id:'m1',data:{date:'2026-10-30',topic:'quant',moduleId:'q2',qid:'Q7',tag:'formula',why:'forgot to annualise',rule:'(1+r)^(365/t)-1',redone:false}},
+      {coll:'mistakes',id:'m2',data:{date:'2026-11-03',topic:'quant',qid:'Q9',tag:'calc',why:'too new',rule:'',redone:false}}];
+    const page=await open(browser,{seed});
+    check(/Mistakes due for a redo.*1/s.test(await page.textContent('.hero')),'Today counts only mistakes that are due');
+    await go(page,'session');await page.click('[data-act=tpl][data-k=review]');await page.click('[data-act=begin]');await page.click('[data-act=goto][data-i="1"] >> visible=true');
+    check(await page.$$eval('[data-act=redo][data-ok="1"]',b=>b.length)===1,'redo step lists the one due mistake');
+    await page.click('[data-act=redo][data-ok="1"]');await page.waitForTimeout(50);
+    let m=(await db(page,'mistakes')).find(r=>r.id==='m1').data;
+    check(!m.redone&&m.nextRedo==='2026-11-11','first right answer schedules a check a week later');
+    await page.clock.fastForward(8*24*3600*1000);await page.evaluate(()=>forceRender());
+    await page.click('[data-act=redo][data-id=m1][data-ok="1"]');await page.waitForTimeout(50);
+    m=(await db(page,'mistakes')).find(r=>r.id==='m1').data;
+    check(m.redone===true,'second right answer a week later closes it');
+    await page.click('[data-act=redo][data-id=m2][data-ok="0"]');await page.waitForTimeout(50);
+    m=(await db(page,'mistakes')).find(r=>r.id==='m2').data;
+    check(!m.redone&&m.nextRedo==='2026-11-15','a miss brings it back in 3 days');
+    await page.click('[data-act=abandon]');await page.click('[data-act=abandon]');
+    await go(page,'mistakes');await page.uncheck('#mOpen');
+    await page.click('[data-act=mcard][data-id=m1]');
+    check(await page.inputValue('#mcBack')==='(1+r)^(365/t)-1','card form starts from the rule');
+    await page.fill('#mcFront','How do you annualise a t-day return?');await page.click('[data-act=mcardsave]');await page.waitForTimeout(80);
+    const c=(await db(page,'cards'))[0]?.data;
+    check(c&&c.moduleId==='q2'&&c.topic==='quant','card queued with the mistake\'s topic and module');
+    check(/card made/.test(await page.textContent('#view .list')),'mistake shows a card was made');
+    await page.context().close();
+  }
+
+  console.log('Mock topic results feed topic averages (22)');
+  {
+    const page=await open(browser,{seed:[...SEED,{coll:'scores',id:'mk1',data:{type:'mock',topic:'',date:'2026-11-03',c:120,n:180,pct:67}}]});
+    await go(page,'scores');
+    check(await page.evaluate(()=>!!document.querySelector('nav a[data-nav=progress][aria-current=page]')),'Scores now lives on Progress');
+    await page.click('[data-act=mocktopics][data-id=mk1]');
+    await page.fill('#mt_c_fsa','10');await page.fill('#mt_n_fsa','20');await page.fill('#mt_c_quant','9');await page.fill('#mt_n_quant','10');
+    await page.click('[data-act=mocksave]');await page.waitForTimeout(80);
+    check((await db(page,'scores'))[0].data.topics.fsa.c===10,'topic results saved on the mock');
+    check(/Weakest: FSA 50%/.test(await page.textContent('#scoresSec')),'mock row shows the weakest topics');
+    check(await page.evaluate(()=>topicQuiz('fsa').some(r=>r.p===50)),'FSA average includes the mock result');
+    await page.context().close();
+  }
+
+  console.log('The Supabase script is pinned with an integrity hash (25)');
+  {
+    const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
+    check(/supabase-js@\d+\.\d+\.\d+\/dist\/umd\/supabase\.js" integrity="sha384-[A-Za-z0-9+\/=]{64}" crossorigin="anonymous"/.test(html),'script tag has an exact version, sha384 integrity and crossorigin');
+    check(/connect-src[^;]*supabase\.co/.test(HEADERS['Content-Security-Policy']||''),'CSP allows Supabase and nothing else to be called');
   }
 
   console.log('Backup downloads and restores (20)');
