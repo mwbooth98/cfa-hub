@@ -7,13 +7,17 @@ Marcus's personal study app for the CFA Level I exam (May 11–17, 2027). Read t
 - `config.js` holds the Supabase project URL and publishable key (safe to commit; never add a service_role/secret key).
 - Hosting: Vercel, auto-deploys on every push to `main` (repo `mwbooth98/cfa-hub`). No preview workflow; test before pushing.
 - Data + auth: Supabase project `ubuhfsfbmqzlbimwpurk`. One table `public.docs (user_id, coll, id, data jsonb)` with row-level security (own rows only). Sign-ups are disabled; Marcus is the only user. Schema lives in `setup.sql`.
-- Supabase JS client is loaded from jsDelivr, pinned to an exact version.
+- Supabase JS client is loaded from jsDelivr, pinned to an exact version with a sha384 `integrity` hash. Bumping the version means a new hash (jsDelivr serves the npm file unchanged: `npm pack @supabase/supabase-js@X`, then `openssl dgst -sha384 -binary package/dist/umd/supabase.js | openssl base64 -A`).
+- `vercel.json` sends a Content-Security-Policy: scripts only from the page and jsDelivr, calls only to the Supabase project, fonts from Google. Adding any other host means updating it; `tests/smoke.js` serves the page with these headers and fails on CSP errors.
 
 ## Data model (collections in `docs.coll`)
 - `modules/<topicKey>` → `{items:[{id,name,est,done,doneOn,rating,ratedOn,hist[]}]}`. `est` = CFA Institute planner minutes.
 - `sessions/<id>` → `{date,ts,tpl,topic,module,moduleId,minutes,quizzes[],focus,note,...}`. `tpl` ∈ module, deep (new material) | review, mixed, mock (review).
 - `scores/<id>` → `{type: test|quiz|checkpoint|mock|revisit, topic, date, c, n, pct, rev}`.
 - `notes/<topicKey>` → `{formulas, notes, mods:{<moduleId>:{formulas, notes}}}`: one collapsible section per module (subtopics are CFA modules); the top-level fields are the General section. Capture appends formulas to the session's module.
+- `mistakes` also hold `redos:[{d,ok}]`, `nextRedo` and `cardId`: due 3 days after logging, closed after two right redos at least 7 days apart, a miss → due again in 3 days.
+- `scores` of type mock may hold `topics:{<topicKey>:{c,n}}`, which count toward topic averages. Sessions logged by hand have `manual:true`.
+- Views: Today, Progress (includes scores/mocks and session history; `#scores` and `#history` jump there), Session, Plan, Anki, Mistakes, Notes.
 - `mistakes` and `cards` carry an optional `moduleId`; Anki export tags are `cfa::<topic>::<moduleId>_<slug>`.
 - `cards`, `mistakes`, `checkins/<date>` (Anki done), `settings/plan` ({order, weeks}), `settings/curriculum` ({v}).
 - Topic keys: ethics, quant, econ, corp, fsa, equity, fi, deriv, alts, pm. Never rename keys or module ids; data is keyed on them.
