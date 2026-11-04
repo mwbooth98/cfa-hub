@@ -13,7 +13,9 @@ Marcus's personal study app for the CFA Level I exam (May 11–17, 2027). Read t
 - `modules/<topicKey>` → `{items:[{id,name,est,done,doneOn,rating,ratedOn,hist[]}]}`. `est` = CFA Institute planner minutes.
 - `sessions/<id>` → `{date,ts,tpl,topic,module,moduleId,minutes,quizzes[],focus,note,...}`. `tpl` ∈ module, deep (new material) | review, mixed, mock (review).
 - `scores/<id>` → `{type: test|quiz|checkpoint|mock|revisit, topic, date, c, n, pct, rev}`.
-- `cards`, `mistakes`, `notes/<topicKey>`, `checkins/<date>` (Anki done), `settings/plan` ({order, weeks}), `settings/curriculum` ({v}).
+- `notes/<topicKey>` → `{formulas, notes, mods:{<moduleId>:{formulas, notes}}}`: one collapsible section per module (subtopics are CFA modules); the top-level fields are the General section. Capture appends formulas to the session's module.
+- `mistakes` and `cards` carry an optional `moduleId`; Anki export tags are `cfa::<topic>::<moduleId>_<slug>`.
+- `cards`, `mistakes`, `checkins/<date>` (Anki done), `settings/plan` ({order, weeks}), `settings/curriculum` ({v}).
 - Topic keys: ethics, quant, econ, corp, fsa, equity, fi, deriv, alts, pm. Never rename keys or module ids; data is keyed on them.
 - Curriculum changes go through `CURRICULUM` + `migrateCurriculum()` (bump `CURRICULUM_V`), which preserves done/rating by module id.
 
@@ -30,6 +32,10 @@ Marcus's personal study app for the CFA Level I exam (May 11–17, 2027). Read t
 - Must work at 400px wide and on public computers (non-trusted sign-in uses sessionStorage + 1 h idle sign-out).
 - Plain, direct UI copy; no emoji as decoration.
 
+## Saving
+- All writes go through `put`/`del`, which queue the change in an outbox (localStorage when trusted, else sessionStorage), show it on screen at once and retry until Supabase confirms. `loadAll` re-applies queued changes over server data. Never write to Supabase directly.
+- Session quiz steps carry their own topic (`mixed` allowed); mixed scores never count toward a topic average. Only module/deep sessions carry a `moduleId`. Sessions saved from now on have `v:2`.
+
 ## Testing before a push
 - `node --check` on the extracted `<script>` block.
-- Headless Playwright with a stubbed `window.supabase` (route the jsDelivr script) to render each view at 1280px and 400px and fail on page errors or horizontal overflow.
+- `node tests/smoke.js`: renders every view at 1280px and 400px (fails on page errors or sideways scroll) and runs behaviour checks (offline save, score validation, mistakes, sign-in expiry, idle sign-out, notes, backup) against the stub in `tests/stub-supabase.js`. Add a check when you change behaviour.
