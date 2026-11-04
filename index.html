@@ -38,6 +38,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15p
 nav.rail{position:sticky;top:0;height:100vh;padding:22px 14px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:4px}
 .brand{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.01em;padding:0 10px 14px}
 .brand small{display:block;font-family:var(--mono);font-weight:400;font-size:11px;color:var(--muted);letter-spacing:.04em;margin-top:2px}
+a{color:var(--accent)}
 nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:500}
 nav a:hover{background:var(--sunk);color:var(--ink)}
 nav a[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
@@ -161,6 +162,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13.5px;font-weight:6
 .auth{min-height:100vh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .auth form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px}
 .auth .err{color:var(--bad);font-size:13.5px;min-height:1em;margin:0}
+.syncwarn{max-width:980px;margin:0 auto 18px;border:1px solid var(--warn);background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:10px 14px;font-size:13.5px}
+.linkish{background:none;border:0;padding:0;color:var(--accent);font-weight:600;font-size:inherit;cursor:pointer}
+.linkish:hover{background:none;text-decoration:underline}
 .signout{margin-top:6px;font-size:13px;padding:6px 10px;justify-content:flex-start;border-color:transparent;background:transparent;color:var(--muted)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
@@ -191,9 +195,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13.5px;font-weight:6
     <a href="#notes" data-nav="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>Notes</a>
     <div class="sync"><span id="sync">Connecting…</span><button class="signout" data-act="signout">Sign out</button></div>
   </nav>
-  <main><div class="wrap" id="view"></div></main>
+  <main><div class="syncwarn" data-sync-warn role="status" hidden></div><div class="wrap" id="view"></div></main>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="toast" id="idleWarn" role="alert" hidden style="bottom:calc(72px + env(safe-area-inset-bottom,0px))">You’ll be signed out in 5 minutes. Tap anywhere to stay signed in.</div>
 
 <script>
 /* ---------- reference data ---------- */
@@ -214,7 +219,7 @@ const START='2026-11-02', REVIEW_END='2027-04-11', MOCK_END='2027-05-09';
 const DEFAULT_PLAN={order:['ethics','quant','econ','fsa','corp','equity','fi','deriv','alts','pm'],weeks:{ethics:1,quant:2,econ:2,fsa:5,corp:1,equity:2,fi:3,deriv:2,alts:1,pm:1}};
 const SCHWESER_PLAN={order:['quant','econ','corp','fsa','equity','fi','deriv','alts','pm','ethics'],weeks:{quant:1,econ:2,corp:1,fsa:5,equity:2,fi:3,deriv:2,alts:1,pm:1,ethics:2}};
 let BLOCKS=[];
-function planCfg(){const p=S.settings?.plan;return p&&Array.isArray(p.order)&&p.order.length===10&&p.weeks?p:DEFAULT_PLAN}
+function planCfg(){const p=S.settings?.plan;return p&&Array.isArray(p.order)&&p.order.length===10&&p.weeks?p:SCHWESER_PLAN}
 function computeBlocks(){
   const p=planCfg(),out=[];let d=START;
   p.order.forEach((k,i)=>{const w=Math.max(1,p.weeks[k]||1),e=addDays(d,w*7-1);
@@ -319,6 +324,14 @@ function weekTarget(ws){
   return 10.5;
 }
 function topicFromBlock(b){return TOPICS[b?.k]?b.k:'ethics'}
+const topicOptions=(sel,mixed)=>(mixed?`<option value="mixed" ${sel==='mixed'?'selected':''}>Mixed topics</option>`:'')+Object.entries(TOPICS).map(([k,t])=>`<option value="${k}" ${k===sel?'selected':''}>${esc(t.short)}</option>`).join('');
+// Reads a correct / out-of pair. Both are required, whole numbers, and correct can't exceed out of.
+function readScore(cEl,nEl){
+  const cv=cEl.value.trim(),nv=nEl.value.trim(),c=+cv,n=+nv;
+  if(cv===''||nv===''||!Number.isInteger(c)||!Number.isInteger(n)||n<1||c<0||c>n){
+    (cv===''||!Number.isInteger(c)||c<0?cEl:nEl).focus();toast(c>n?'Correct can\u2019t be more than out of':'Enter correct and out of, e.g. 21 of 30');return null}
+  return {c,n};
+}
 
 /* ---------- store: Supabase (auth + one "docs" table, private per user by row-level security) ---------- */
 const COLLS = ['sessions','cards','mistakes','scores','notes','modules','checkins','settings'];
@@ -328,39 +341,82 @@ const CFG = window.CFA_CONFIG||{};
 let sb=null, user=null;
 function trusted(){try{return localStorage.getItem('cfa-trusted')==='1'}catch(e){return false}}
 function draftStore(){try{return trusted()?localStorage:sessionStorage}catch(e){return null}}
-function makeClient(){sb=supabase.createClient(CFG.url,CFG.key,{auth:{storage:trusted()?window.localStorage:window.sessionStorage,persistSession:true,autoRefreshToken:true}})}
-async function put(c,id,data){
-  S[c][id]=data; render();
-  const {error}=await sb.from('docs').upsert({user_id:user.id,coll:c,id,data,updated_at:new Date().toISOString()},{onConflict:'user_id,coll,id'});
-  if(error){handleErr(error);return false}
-  return true;
+function makeClient(){
+  sb=supabase.createClient(CFG.url,CFG.key,{auth:{storage:trusted()?window.localStorage:window.sessionStorage,persistSession:true,autoRefreshToken:true}});
+  sb.auth.onAuthStateChange?.(ev=>{if(ev==='SIGNED_OUT'&&user&&!signingOut)loginExpired()});
 }
-async function del(c,id){
-  delete S[c][id]; render();
-  const {error}=await sb.from('docs').delete().eq('user_id',user.id).eq('coll',c).eq('id',id);
-  if(error)handleErr(error);
+/* Every change goes through an outbox kept in browser storage: it shows on screen at once, is sent to Supabase,
+   and stays queued (and is retried) until the database confirms it, so a dropped connection never loses work. */
+const OKEY='cfa-hub-outbox';
+let outbox=[], flushing=null, retryT=null, lastSync=null, authLost=false;
+try{outbox=JSON.parse(draftStore()?.getItem(OKEY)||'[]')||[]}catch(e){outbox=[]}
+function saveOutbox(){try{const st=draftStore();if(!st)return;outbox.length?st.setItem(OKEY,JSON.stringify(outbox)):st.removeItem(OKEY)}catch(e){}}
+function enqueue(op){outbox=outbox.filter(o=>!(o.c===op.c&&o.id===op.id));outbox.push(op);saveOutbox();showSync()}
+function applyOutbox(state){outbox.forEach(o=>{if(!state[o.c])return;if(o.t==='put')state[o.c][o.id]=o.data;else delete state[o.c][o.id]})}
+const isAuthErr = e=>!!e&&(e.status===401||e.code==='PGRST301'||e.code==='PGRST303'||/jwt|not authenticated/i.test(e.message||''));
+// Sends queued changes in order. Resolves true once the outbox is empty.
+function flush(){
+  if(flushing)return flushing;
+  flushing=(async()=>{
+    await null; // let the assignment to flushing happen before this can finish and clear it
+    while(outbox.length&&user&&!authLost){
+      const o=outbox[0];let error;
+      try{
+        ({error}=o.t==='put'
+          ?await sb.from('docs').upsert({user_id:user.id,coll:o.c,id:o.id,data:o.data,updated_at:new Date().toISOString()},{onConflict:'user_id,coll,id'})
+          :await sb.from('docs').delete().eq('user_id',user.id).eq('coll',o.c).eq('id',o.id));
+      }catch(e){error=e}
+      if(error){
+        console.error(error);
+        if(isAuthErr(error))loginExpired();
+        else{clearTimeout(retryT);retryT=setTimeout(flush,15000)}
+        break;
+      }
+      if(outbox[0]===o)outbox.shift(); // a newer edit to the same row may have replaced it while this one was in flight
+      saveOutbox();
+    }
+    flushing=null;showSync();return !outbox.length;
+  })();
+  return flushing;
 }
-function handleErr(e){toast('Couldn\u2019t save that change. Check your connection and try again.');console.error(e)}
+async function put(c,id,data){S[c][id]=data;enqueue({t:'put',c,id,data});render();return flush()}
+async function del(c,id){delete S[c][id];enqueue({t:'del',c,id});render();return flush()}
 function setSync(t){const el=$('#sync');if(el)el.textContent=t}
+function showSync(){
+  const n=outbox.length;
+  setSync(n?`${n} change${n===1?'':'s'} not saved yet. ${authLost?'Sign in again to save them.':'Retrying.'}`:lastSync?'Synced '+lastSync:'Connecting…');
+  document.querySelectorAll('[data-sync-warn]').forEach(el=>{el.hidden=!n;el.textContent=n?`${n} change${n===1?'':'s'} not saved yet. They’re kept on this device and retried automatically.`:''});
+}
+window.addEventListener('online',()=>{if(user)flush()});
 async function loadAll(){
   setSync('Syncing…');
+  await flush();
   const fresh={};COLLS.forEach(c=>fresh[c]={});
   for(let from=0;;from+=1000){
     const {data,error}=await sb.from('docs').select('coll,id,data').range(from,from+999);
-    if(error){setSync('Can\u2019t reach your data. Check your connection.');return}
+    if(error){if(isAuthErr(error))loginExpired();else setSync('Can’t reach your data. Check your connection.');return}
     data.forEach(r=>{if(fresh[r.coll])fresh[r.coll][r.id]=r.data});
     if(data.length<1000)break;
   }
+  applyOutbox(fresh); // changes still waiting to be saved win over what the server has
   COLLS.forEach(c=>S[c]=fresh[c]);
   BLOCKS=computeBlocks();
   try{await migrateCurriculum()}catch(e){console.error(e)}
-  setSync('Synced '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}));
+  lastSync=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});showSync();
   render.keep=true;forceRender();
 }
 function showLogin(msg){$('#app').hidden=true;$('#auth').hidden=false;$('#lTrust').checked=trusted();$('#lErr').textContent=msg||'';setTimeout(()=>$('#lEmail').focus(),0)}
-async function start(u){user=u;$('#auth').hidden=true;$('#app').hidden=false;route();await loadAll();armIdle()}
+// The sign-in lapsed while the app was open: ask for the password again, keeping the session in progress and the outbox.
+function loginExpired(){
+  if(authLost||!user)return;authLost=true;showSync();
+  showLogin('Your sign-in expired. Sign in again and your unsaved changes will be saved.');
+}
+async function start(u){
+  if(user&&user.id!==u.id){outbox=[];saveOutbox()}
+  user=u;authLost=false;$('#auth').hidden=true;$('#app').hidden=false;route();await loadAll();armIdle();
+}
 async function initStore(){
-  if(!CFG.url||!CFG.key||!window.supabase){document.body.innerHTML='<p style="padding:24px">The hub isn\u2019t configured yet. Add the Supabase URL and key to config.js.</p>';return}
+  if(!CFG.url||!CFG.key||!window.supabase){document.body.innerHTML='<p style="padding:24px">The hub isn’t configured yet. Add the Supabase URL and key to config.js.</p>';return}
   makeClient();
   const {data:{session}}=await sb.auth.getSession();
   if(session)start(session.user);else showLogin();
@@ -376,14 +432,29 @@ $('#loginForm')?.addEventListener('submit',async e=>{
   if(error){$('#lErr').textContent=error.message==='Invalid login credentials'?'Email or password is wrong.':error.message;return}
   $('#lPass').value='';start(data.user);
 });
-async function signOut(msg){
+let signingOut=false;
+async function signOut(msg,auto){
+  await flush();
+  if(outbox.length&&!auto&&!confirm(`${outbox.length} change${outbox.length===1?' hasn\u2019t':'s haven\u2019t'} reached the database yet and will be lost if you sign out now. Sign out anyway?`))return;
+  signingOut=true;
   try{await sb.auth.signOut()}catch(_){}
-  try{sessionStorage.removeItem(DKEY);if(!trusted())localStorage.removeItem(DKEY)}catch(_){}
-  run=null;COLLS.forEach(c=>S[c]={});user=null;showLogin(msg);
+  signingOut=false;
+  try{sessionStorage.removeItem(DKEY);sessionStorage.removeItem(OKEY);if(!trusted()){localStorage.removeItem(DKEY);localStorage.removeItem(OKEY)}}catch(_){}
+  clearInterval(tick);clearTimeout(idleT);clearTimeout(idleWarnT);$('#idleWarn').hidden=true;
+  run=null;outbox=[];authLost=false;COLLS.forEach(c=>S[c]={});user=null;showLogin(msg);
 }
-let idleT=null;
-function armIdle(){if(trusted())return;clearTimeout(idleT);idleT=setTimeout(()=>signOut('Signed out after an hour without activity.'),60*60*1000)}
-['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(user)armIdle()},{passive:true}));
+// Public-computer mode signs out after an hour without activity, with a 5-minute warning. A running session timer
+// counts as activity, so a long reading block or a mock half never signs you out and throws the session away.
+const IDLE_MS=60*60*1000, IDLE_WARN_MS=5*60*1000;
+let idleT=null, idleWarnT=null, lastAct=Date.now();
+const timerRunning = ()=>!!(run&&!run.paused&&!run.finished);
+function armIdle(){
+  if(trusted()||!user)return;
+  lastAct=Date.now();clearTimeout(idleT);clearTimeout(idleWarnT);$('#idleWarn').hidden=true;
+  idleWarnT=setTimeout(()=>{if(timerRunning())return armIdle();$('#idleWarn').hidden=false},IDLE_MS-IDLE_WARN_MS);
+  idleT=setTimeout(()=>{if(timerRunning())return armIdle();signOut('Signed out after an hour without activity.',true)},IDLE_MS);
+}
+['click','keydown','touchstart','scroll','pointermove','wheel'].forEach(ev=>document.addEventListener(ev,()=>{if(user&&Date.now()-lastAct>2000)armIdle()},{passive:true,capture:true}));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&user){const a=document.activeElement;if(!(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT')))loadAll()}});
 
 /* ---------- derived ---------- */
@@ -403,7 +474,8 @@ function streak(){
 }
 function topicQuiz(k){
   const rows=[];
-  arr('sessions').forEach(s=>(s.quizzes||[]).forEach(q=>{if(q.topic===k&&q.n)rows.push({date:s.date,p:pct(q.c,q.n),n:q.n})}));
+  // Sessions saved before quiz steps had their own topic credited mixed sets and mocks to the session topic: skip those.
+  arr('sessions').forEach(s=>{if(!s.v&&(s.tpl==='mixed'||s.tpl==='mock'))return;(s.quizzes||[]).forEach(q=>{if(q.topic===k&&q.n)rows.push({date:s.date,p:pct(q.c,q.n),n:q.n})})});
   arr('scores').forEach(s=>{if(s.topic===k&&s.pct!=null)rows.push({date:s.date,p:s.pct,n:s.n||0,type:s.type})});
   rows.sort((a,b)=>a.date<b.date?-1:1);
   return rows;
@@ -454,8 +526,8 @@ function ratingChips(k,m,src){
 }
 function ratingLegend(){return `<div class="legend">${[1,2,3,4].map(r=>`<span><span class="pill ${RATING[r].c}">${r}</span> <b>${RATING[r].l}</b> <span class="meta">${RATING[r].d}</span></span>`).join('')}</div>`}
 function moduleScore(id){
-  const s=arr('sessions').filter(x=>x.moduleId===id&&(x.quizzes||[]).some(q=>q.n)).sort((a,b)=>(a.ts||0)-(b.ts||0)).at(-1);
-  if(!s)return null;const q=s.quizzes.filter(q=>q.n);return pct(q.reduce((a,x)=>a+x.c,0),q.reduce((a,x)=>a+x.n,0));
+  const s=arr('sessions').filter(x=>x.moduleId===id&&NEW_TPLS.has(x.tpl)&&(x.quizzes||[]).some(q=>q.n&&q.topic===x.topic)).sort((a,b)=>(a.ts||0)-(b.ts||0)).at(-1);
+  if(!s)return null;const q=s.quizzes.filter(q=>q.n&&q.topic===s.topic);return pct(q.reduce((a,x)=>a+x.c,0),q.reduce((a,x)=>a+x.n,0));
 }
 const revLogs = k=>arr('scores').filter(s=>s.type==='revisit'&&s.topic===k).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0));
 function overconfident(k,m){
@@ -670,6 +742,7 @@ function render(){
   v.innerHTML=({today:vToday,progress:vProgress,session:vSession,plan:vPlan,cards:vCards,mistakes:vMistakes,scores:vScores,notes:vNotes})[view]();
   if(view==='session')updateClock();
   if(view==='notes')fillNotes();
+  showSync();
   for(const [id,val] of typed){const el=document.getElementById(id);if(el&&el.value!==val&&(el.tagName!=='SELECT'||[...el.options].some(o=>o.value===val)))el.value=val}
   v.querySelectorAll('textarea[id]').forEach(el=>{if(taSize[el.id])el.style.height=taSize[el.id];grow(el)});
   // put focus back where it was, so Tab order and typing carry on after a redraw
@@ -699,6 +772,7 @@ function vToday(){
   <p class="sub">${started?`Current block: <b>${esc(b?blockName(b):'—')}</b>${b&&b.e?` · ${blockLeft} day${blockLeft===1?'':'s'} left`:''}`:`Study starts ${fmt(BLOCKS[0].s)} with ${esc(blockName(BLOCKS[0]))}.`}</p></header>
   ${catchUp()?`<section class="panel" style="border-color:var(--warn);background:var(--warn-soft)"><b>Catch-up mode.</b> You’re ${behindBy()} modules behind the plan, so revisits drop to 1 a week until you’re back on pace. Anki and Ethics questions continue.</section>`:''}
   ${rateAfterPanel()}
+  ${backupDue()?`<section class="panel" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:12px"><p style="margin:0;font-size:14px">${S.settings.backup?.at?`Your last backup was ${diffDays(S.settings.backup.at,t)} days ago.`:'You haven\u2019t downloaded a backup yet.'} Keep a copy of your sessions, ratings, mistakes and notes once a month.</p><button class="small" data-act="backup">Download backup</button></section>`:''}
   <div class="hero">
     <section class="panel next">
       <div class="eyebrow">Next up</div>
@@ -736,7 +810,8 @@ function vToday(){
       <div><b>Stop on time.</b> Sustainable for 27 weeks beats heroic for three.</div>
     </div>
   </section>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)"><span>${trusted()?'Signed in on this device':'Public-computer mode: you\u2019ll be signed out when the browser closes'}</span><button class="small" data-act="signout">Sign out</button></div>`;
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)"><span>${trusted()?'Signed in on this device':'Public-computer mode: you\u2019ll be signed out when the browser closes'}</span>
+    <div class="ctrl"><button class="small" data-act="backup">Download backup</button><label class="btn small" style="font-size:13px;padding:4px 10px;flex-direction:row;color:var(--ink)">Restore<input type="file" id="restoreFile" accept=".json,application/json" hidden></label><button class="small" data-act="signout">Sign out</button></div></div>`;
 }
 
 /* ---------- modules + progress ---------- */
@@ -789,7 +864,7 @@ function vProgress(){
     <div class="row" style="margin-top:6px"><label>Add a module<input id="modAdd_${r.k}" placeholder="Module name as it appears in Schweser"></label><div class="fit"><button class="small" data-act="modadd" data-topic="${r.k}">Add</button></div></div>
     </div></details>`).join('')}</div></section>`;
 }
-async function saveMods(k,items){await put('modules',k,{items})}
+function saveMods(k,items){return put('modules',k,{items})}
 
 function vSession(){
   if(!run){
@@ -803,7 +878,7 @@ function vSession(){
     </div></section>
     <section class="panel"><div class="row">
       <label>Topic<select id="sTopic">${Object.entries(TOPICS).map(([k,t])=>`<option value="${k}" ${k===setup.topic?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>
-      <label>Module<select id="sModSel">${(()=>{const it=mods(setup.topic);const firstOpen=it.find(m=>!m.done);const sel=setup.moduleId==='__other'?'':(setup.moduleId||firstOpen?.id||'');return it.map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${m.done?'✓ ':''}${esc(m.name)}</option>`).join('')+`<option value="" ${sel===''?'selected':''}>Other or several modules</option>`})()}</select></label>
+      ${NEW_TPLS.has(setup.tpl)?`<label>Module<select id="sModSel">${(()=>{const it=mods(setup.topic);const firstOpen=it.find(m=>!m.done);const sel=setup.moduleId==='__other'?'':(setup.moduleId||firstOpen?.id||'');return it.map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${m.done?'✓ ':''}${esc(m.name)}</option>`).join('')+`<option value="" ${sel===''?'selected':''}>Other or several modules</option>`})()}</select></label>`:''}
       <label>Note on what you're covering (optional)<input id="sModule" placeholder="e.g. second half, examples 4–7" value="${esc(setup.module)}"></label>
     </div>
     <p class="sub" style="margin-top:10px">${esc(TOPICS[setup.topic].name)} · ${esc(FAM[TOPICS[setup.topic].fam])} · exam weight ${esc(TOPICS[setup.topic].w)}</p></section>
@@ -843,14 +918,18 @@ function stepBody(st){
     <label>From memory, notes closed<textarea id="fBlurt" data-bind="blurt" class="tall" placeholder="Key ideas, formulas, distinctions…">${esc(d.blurt||'')}</textarea></label>
     <label>Gaps after checking (one per line)<textarea id="fGaps" data-bind="gaps" class="tall" placeholder="What you missed or got wrong…">${esc(d.gaps||'')}</textarea></label></div></section>`;
   if(st.type==='quiz'){
-    const topic=st.forceTopic||run.topic; const q=d.quizzes.find(x=>x.step===st.id)||{n:'',c:''};
-    return `<section class="panel"><div class="panel-h"><h2>Score</h2><span class="pill">${esc(TOPICS[topic].short)}</span></div>
-      <div class="row"><label>Questions<input id="q_n_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="n" value="${q.n}"></label>
-      <label>Correct<input id="q_c_${st.id}" type="number" min="0" inputmode="numeric" data-quiz="${st.id}" data-qtopic="${topic}" data-f="c" value="${q.c}"></label>
-      <div class="fit" style="padding-bottom:8px"><span class="num" id="q_pct_${st.id}" style="font-size:20px;font-weight:600">${q.n?pct(q.c,q.n)+'%':'—'}</span></div></div></section>
+    const q=d.quizzes.find(x=>x.step===st.id)||{n:'',c:''};
+    const topic=q.topic||st.forceTopic||(['mixed','mock'].includes(run.tpl)?'mixed':run.topic);
+    const qa=`data-quiz="${st.id}" data-qtopic="${topic}"`;
+    return `<section class="panel"><h2 style="margin-bottom:10px">Score</h2>
+      <div class="row" style="margin-bottom:8px"><label>Topic<select id="q_t_${st.id}" ${qa} data-f="topic">${topicOptions(topic,true)}</select></label></div>
+      <div class="row" style="flex-wrap:nowrap"><label style="flex:1 1 0">Correct<input id="q_c_${st.id}" type="number" min="0" inputmode="numeric" ${qa} data-f="c" value="${q.c}"></label>
+      <label style="flex:1 1 0">Out of<input id="q_n_${st.id}" type="number" min="1" inputmode="numeric" ${qa} data-f="n" value="${q.n}"></label>
+      <div class="fit" style="padding-bottom:8px"><span class="num" id="q_pct_${st.id}" style="font-size:20px;font-weight:600">${quizPct(q)}</span></div></div>
+      <p class="sub" style="font-size:12.5px;margin-top:6px">${topic==='mixed'?'A mixed score isn\u2019t counted in any single topic\u2019s average.':'Counts toward the '+esc(TOPICS[topic].short)+' average on Progress and Scores.'}</p></section>
       ${run.tpl==='mixed'?(()=>{const w=Object.keys(TOPICS).flatMap(k=>doneMods(k).map(m=>({k,m}))).sort((a,b)=>(overconfident(b.k,b.m)?1:0)-(overconfident(a.k,a.m)?1:0)||(a.m.rating??2.5)-(b.m.rating??2.5)).slice(0,6);
         return w.length?`<section class="panel"><h2 style="margin-bottom:8px">Build this set from your weakest modules</h2><div class="list">${w.map(({k,m})=>`<div class="li"><span class="pill">${esc(TOPICS[k].short)}</span><span class="grow">${esc(m.name)}</span>${m.rating?`<span class="pill ${RATING[m.rating].c}">${m.rating}</span>`:'<span class="meta">unrated</span>'}${overconfident(k,m)?'<span class="pill bad">⚑</span>':''}</div>`).join('')}</div></section>`:''})():''}
-      ${mistakeForm(topic)}
+      ${mistakeForm(topic==='mixed'?run.topic:topic)}
       ${sessionMistakes()}`;
   }
   if(st.type==='capture'){
@@ -882,6 +961,17 @@ function stepBody(st){
   }
   return '';
 }
+function quizPct(q){return q&&q.n!==''&&q.n?(q.c!==''&&q.c>q.n?'Check':q.c===''?'\u2014':pct(q.c,q.n)+'%'):'\u2014'}
+// Returns a message when a quiz step has a half-entered or impossible score, otherwise null.
+function quizProblem(){
+  for(const q of run.data.quizzes){
+    const st=run.steps.find(x=>x.id===q.step), name=st?'\u201c'+st.t+'\u201d':'a quiz step';
+    if(q.n===''&&q.c==='')continue;
+    if(q.n===''||q.c==='')return `Enter both correct and out of for ${name}, or clear both`;
+    if(!(q.n>=1)||q.c<0||q.c>q.n||!Number.isInteger(q.c)||!Number.isInteger(q.n))return `Check the score for ${name}: correct can\u2019t be more than out of`;
+  }
+  return null;
+}
 function captureLines(){
   const d=run.data;
   const lines=(txt,src)=>(txt||'').split('\n').map(t=>t.trim()).filter(Boolean).map(t=>({t,src}));
@@ -898,15 +988,14 @@ function sessionMistakes(){
   const ms=run?.data.mistakes||[];
   return ms.length?`<section class="panel"><h2>Logged this session</h2><div class="list">${ms.map(m=>`<div class="li"><span class="pill warn">${TAGS[m.tag]}</span><div class="grow">${esc(m.qid||'Question')} — ${esc(m.why)}</div></div>`).join('')}</div></section>`:'';
 }
-let mDraft=null; // a miss that failed to save, put back in the form so it isn't lost
 function mistakeForm(topic){
-  const d=mDraft||{};
+  const d={};
   return `<section class="panel"><h2 style="margin-bottom:10px">Log a miss</h2>
-  <div class="row"><label>Question ID<input id="mQid" placeholder="e.g. Q1043" value="${esc(d.qid||'')}"></label>
+  <div class="row"><label>Topic<select id="mTopic">${topicOptions(topic)}</select></label><label>Question ID<input id="mQid" placeholder="e.g. Q1043" value="${esc(d.qid||'')}"></label>
   <label>Reason<select id="mTag">${Object.entries(TAGS).map(([k,v])=>`<option value="${k}" ${k===d.tag?'selected':''}>${v}</option>`).join('')}</select></label></div>
   <div class="row" style="margin-top:8px"><label>Why you got it wrong<input id="mWhy" placeholder="e.g. used annual instead of semi-annual periods" value="${esc(d.why||'')}"></label></div>
   <div class="row" style="margin-top:8px"><label>Rule to remember<input id="mRule" placeholder="e.g. bonds: N = years × 2, I/Y = YTM ÷ 2" value="${esc(d.rule||'')}"></label>
-  <div class="fit"><button data-act="addmistake" data-topic="${topic}">Log it</button></div></div></section>`;
+  <div class="fit"><button data-act="addmistake">Log it</button></div></div></section>`;
 }
 function cardForm(ctx){
   return `<div class="row"><label>Front<input id="cFront_${ctx}" placeholder="Question or prompt"></label>
@@ -918,7 +1007,7 @@ function vFinish(){
   const qs=run.data.quizzes.filter(q=>q.n);
   return `<header><div class="eyebrow">Session complete</div><h1>${esc(TOPICS[run.topic].name)}</h1></header>
   <section class="panel">
-    <div class="row" style="margin-bottom:14px"><label>Minutes studied<input id="fMins" type="number" min="1" inputmode="numeric" value="${esc(String(run.data.mins??mins))}"></label></div>
+    <div class="row" style="margin-bottom:14px"><label>Date studied<input id="fDate" type="date" max="${todayISO()}" value="${esc(run.data.date||iso(new Date(run.started||Date.now())))}"></label><label>Minutes studied<input id="fMins" type="number" min="1" inputmode="numeric" value="${esc(String(run.data.mins??mins))}"></label></div>
     <p class="sub" style="font-size:12.5px;margin:-8px 0 14px">The timer tracked ${mins} min. Change it if you took a break without pausing or studied without the timer running.</p>
     <div class="stats" style="margin-bottom:14px;grid-template-columns:repeat(3,1fr)">
     <div class="stat"><b>${qs.length?pct(qs.reduce((a,q)=>a+q.c,0),qs.reduce((a,q)=>a+q.n,0))+'%':'—'}</b><span>quiz score</span></div>
@@ -1023,7 +1112,7 @@ function vMistakes(){
 function vScores(){
   const rows=Object.keys(TOPICS).map(k=>{const r=topicQuiz(k);const last=r.slice(-5);const avg=last.length?Math.round(last.reduce((a,x)=>a+x.p,0)/last.length):null;return {k,avg,n:r.length,last:r.at(-1)}});
   const mocks=arr('scores').filter(s=>s.type==='mock').sort((a,b)=>a.date<b.date?-1:1);
-  arr('sessions').filter(s=>s.tpl==='mock').forEach(s=>(s.quizzes||[]).forEach(q=>q.n&&mocks.push({date:s.date,pct:pct(q.c,q.n),label:'Mock (session)'})));
+  arr('sessions').filter(s=>s.tpl==='mock'&&!s.v).forEach(s=>(s.quizzes||[]).forEach(q=>q.n&&mocks.push({date:s.date,pct:pct(q.c,q.n),label:'Mock (session)'})));
   return `<header><div class="eyebrow">Readiness</div><h1>Scores</h1><p class="sub">Average of your last five quizzes and tests per topic, against the 65% target. Quiz scores from sessions are included automatically.</p></header>
   <section class="panel"><h2 style="margin-bottom:8px">By topic</h2><div class="tbl"><table><thead><tr><th>Topic</th><th>Weight</th><th>Recent avg</th><th style="width:28%">vs 65%</th><th>Status</th></tr></thead><tbody>
   ${rows.map(r=>`<tr><td><b>${esc(TOPICS[r.k].name)}</b><div style="font-size:12px;color:var(--muted)">${r.n} score${r.n===1?'':'s'}</div></td><td>${TOPICS[r.k].w}</td><td class="num">${r.avg==null?'—':r.avg+'%'}</td>
@@ -1056,6 +1145,27 @@ function vNotes(){
 }
 function fillNotes(){const n=S.notes[noteTopic]||{};const f=$('#nFormulas'),t=$('#nNotes');if(f)f.value=n.formulas||'';if(t)t.value=n.notes||''}
 
+/* ---------- backup ---------- */
+function backupDue(){return arr('sessions').length>0&&(!S.settings.backup?.at||diffDays(S.settings.backup.at,todayISO())>=30)}
+function downloadBackup(){
+  const data={};COLLS.forEach(c=>data[c]=S[c]);
+  const txt=JSON.stringify({app:'cfa-hub',version:1,exported:new Date().toISOString(),data},null,1);
+  const url=URL.createObjectURL(new Blob([txt],{type:'application/json'}));const el=document.createElement('a');el.href=url;el.download='cfa-hub-backup-'+todayISO()+'.json';document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  put('settings','backup',{at:todayISO()});toast('Backup downloaded');
+}
+// Restores a backup file. Items in the file replace the same items here; anything not in the file is left alone.
+async function restoreBackup(file){
+  let j;try{j=JSON.parse(await file.text())}catch(e){toast('That file isn\u2019t a hub backup');return}
+  if(j?.app!=='cfa-hub'||!j.data||typeof j.data!=='object'){toast('That file isn\u2019t a hub backup');return}
+  const ops=[];COLLS.forEach(c=>Object.entries(j.data[c]||{}).forEach(([id,d])=>{if(d&&typeof d==='object')ops.push({t:'put',c,id,data:d})}));
+  if(!ops.length){toast('That backup is empty');return}
+  if(!confirm(`Restore ${ops.length} items from the backup made ${String(j.exported||'').slice(0,10)||'on an unknown date'}? Items in the backup replace the same items here. Anything added since the backup is kept.`))return;
+  const key=o=>o.c+'/'+o.id, inFile=new Set(ops.map(key));
+  outbox=[...outbox.filter(o=>!inFile.has(key(o))),...ops];saveOutbox();
+  ops.forEach(o=>S[o.c][o.id]=o.data);showSync();forceRender();
+  const ok=await flush();toast(ok?`Restored ${ops.length} items`:'Restore saved on this device. It will finish syncing when you\u2019re back online');
+}
+
 /* ---------- actions ---------- */
 function rateCard(c,r){
   let iv=c.interval||0, e=c.ease||2.5, t=todayISO();
@@ -1075,7 +1185,7 @@ document.addEventListener('click',async e=>{
   else if(a==='tpl'){setup.tpl=b.dataset.k;forceRender()}
   else if(a==='begin'){
     setup.module=$('#sModule').value.trim();
-    const mid=$('#sModSel')?.value||'', mobj=mods(setup.topic).find(m=>m.id===mid);
+    const mid=NEW_TPLS.has(setup.tpl)?($('#sModSel')?.value||''):'', mobj=mods(setup.topic).find(m=>m.id===mid);
     run={tpl:setup.tpl,topic:setup.topic,moduleId:mid,module:[mobj?.name,setup.module].filter(Boolean).join(' · '),steps:TEMPLATES[setup.tpl].build(setup.topic),i:0,started:Date.now(),stepStart:Date.now(),elapsed:[],data:{blurt:'',gaps:'',quizzes:[],mistakes:[],cards:[],formulas:''}};
     saveRun();keepAwake();startTick();forceRender();
   }
@@ -1093,33 +1203,34 @@ document.addEventListener('click',async e=>{
   else if(a==='savesession'){
     syncBinds();const typed=Math.round(+$('#fMins').value);
     if(!(typed>=1)){$('#fMins').focus();toast('Enter the minutes you studied');return}
-    const mins=typed;
-    const d=run.data, id=uid(), t=todayISO();
-    const doc={date:t,ts:Date.now(),tpl:run.tpl,topic:run.topic,module:run.module,moduleId:run.moduleId||null,minutes:mins,planned:run.steps.reduce((x,s)=>x+s.m,0),
-      quizzes:d.quizzes.filter(q=>q.n).map(q=>({topic:q.topic,n:+q.n,c:+q.c})),blurt:d.blurt,gaps:d.gaps,focus:+$('#fFocus').value||null,note:$('#fNote').value.trim()};
-    const formulas=(d.formulas||'').trim();
-    const markDone=$('#fModDone')?.checked, modId=run.moduleId;
-    const cards=d.cards.slice(), ms=d.mistakes.slice();
+    const date=$('#fDate').value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>todayISO()){$('#fDate').focus();toast('Pick the day you studied');return}
+    const bad=quizProblem();if(bad){toast(bad);return}
+    const d=run.data, id=uid(), qs=d.quizzes.filter(q=>q.n).map(q=>({topic:q.topic,n:+q.n,c:+q.c}));
+    const doc={v:2,date,ts:Date.now(),tpl:run.tpl,topic:run.topic,module:run.module,moduleId:run.moduleId||null,minutes:typed,planned:run.steps.reduce((x,s)=>x+s.m,0),
+      quizzes:qs,blurt:d.blurt,gaps:d.gaps,focus:+$('#fFocus').value||null,note:$('#fNote').value.trim()};
+    const formulas=(d.formulas||'').trim(), markDone=$('#fModDone')?.checked, modId=run.moduleId;
+    // Every write is queued (and kept in browser storage) before the draft is cleared, so nothing is lost offline.
+    const writes=[put('sessions',id,doc)];
+    for(const c of d.cards) writes.push(put('cards',uid(),newCard(c.front,c.back,c.topic)));
+    for(const {saved,...m} of d.mistakes) if(!saved) writes.push(put('mistakes',uid(),m)); // older drafts held mistakes until the session was saved
+    if(markDone&&modId)writes.push(saveMods(doc.topic,mods(doc.topic).map(m=>m.id===modId?{...m,done:true,doneOn:m.doneOn||date}:m)));
+    if(formulas){const n=S.notes[doc.topic]||{};writes.push(put('notes',doc.topic,{...n,formulas:((n.formulas||'').trim()+'\n'+formulas).trim()}))}
+    if(run.tpl==='mock'&&qs.length){const c=qs.reduce((x,q)=>x+q.c,0),n=qs.reduce((x,q)=>x+q.n,0);writes.push(put('scores',uid(),{type:'mock',topic:'',date,ts:Date.now(),c,n,pct:pct(c,n),session:id}))}
     run=null;saveRun();clearInterval(tick);try{wake?.release()}catch(_){}
     location.hash='today';
-    await put('sessions',id,doc);
-    for(const c of cards) await put('cards',uid(),newCard(c.front,c.back,c.topic));
-    for(const {saved,...m} of ms) if(!saved) await put('mistakes',uid(),m); // older drafts held mistakes until the session was saved
-    if(markDone&&modId)await saveMods(doc.topic,mods(doc.topic).map(m=>m.id===modId?{...m,done:true,doneOn:t}:m));
-    if(formulas){const n=S.notes[doc.topic]||{};await put('notes',doc.topic,{...n,formulas:((n.formulas||'').trim()+'\n'+formulas).trim()})}
-    toast('Session saved');
+    const ok=(await Promise.all(writes)).every(Boolean);
+    toast(ok?'Session saved':'Session kept on this device. It will save when you\u2019re back online');
   }
   else if(a==='addmistake'){
     const why=$('#mWhy').value.trim(); if(!why){$('#mWhy').focus();toast('Add why you got it wrong');return}
-    const m={date:todayISO(),topic:b.dataset.topic,qid:$('#mQid').value.trim(),tag:$('#mTag').value,why,rule:$('#mRule').value.trim(),redone:false};
+    const m={date:todayISO(),topic:$('#mTopic').value,qid:$('#mQid').value.trim(),tag:$('#mTag').value,why,rule:$('#mRule').value.trim(),redone:false};
     // Save straight to the mistake log, also during a session, so a miss is never lost if the session is discarded or the tab closes.
     const id=uid(), inSession=run&&view==='session';
     if(inSession)syncBinds();
     const ok=await put('mistakes',id,m);
-    if(!ok){delete S.mistakes[id];mDraft=m;forceRender();return}
-    mDraft=null;
     if(inSession&&run){run.data.mistakes.push({...m,id,saved:true});saveRun()}
-    forceRender();toast('Mistake logged')
+    forceRender();toast(ok?'Mistake logged':'Mistake logged on this device. It will save when you\u2019re back online')
   }
   else if(a==='gapfront'){const g=captureLines()[+b.dataset.i]?.t||'';const f=$('#cFront_run');f.value=g;$('#cBack_run').focus()}
   else if(a==='addcard'){
@@ -1137,9 +1248,9 @@ document.addEventListener('click',async e=>{
   else if(a==='ankidl'){const txt='#separator:tab\n#html:false\n#columns:Front\tBack\tTags\n'+ankiText(pendingCards())+'\n';
     const url=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));const el=document.createElement('a');el.href=url;el.download='cfa-anki-'+todayISO()+'.txt';document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
   else if(a==='signout'){await signOut()}
+  else if(a==='backup'){downloadBackup()}
   else if(a==='ankiadded'){const p=pendingCards();for(const c of p){const {id,...rest}=c;await put('cards',id,{...rest,added:true,addedOn:todayISO()})}forceRender();toast(p.length+' cards marked as in Anki')}
-  else if(a==='logrev'){const k=b.dataset.k,c=+$('#rvC_'+k).value,o=+$('#rvN_'+k).value;
-    if(!o||c>o||c<0){toast('Enter correct and out of, e.g. 21 of 30');return}
+  else if(a==='logrev'){const k=b.dataset.k,sc=readScore($('#rvC_'+k),$('#rvN_'+k));if(!sc)return;const {c,n:o}=sc;
     await put('scores',uid(),{type:'revisit',rev:revLogs(k).length+1,topic:k,date:todayISO(),ts:Date.now(),c,n:o,pct:pct(c,o)});rateAfter=k;forceRender();window.scrollTo(0,0);toast('Revisit logged. Now rate the modules')}
   else if(a==='modrate'){const k=b.dataset.topic,id=b.dataset.id,r=+b.dataset.r;openTopics.add(k);await setRating(k,id,r,b.dataset.src||'progress');forceRender()}
   else if(a==='rateafterdone'){rateAfter=null;forceRender()}
@@ -1156,7 +1267,7 @@ document.addEventListener('click',async e=>{
   else if(a==='mtag'){mFilter.tag=b.dataset.k;forceRender()}
   else if(a==='delmistake'){await del('mistakes',b.dataset.id);forceRender()}
   else if(a==='addscore'){
-    const c=+$('#scC').value,n=+$('#scN').value; if(!n||c>n||c<0){toast('Enter correct and out-of, e.g. 41 of 60');return}
+    const sc=readScore($('#scC'),$('#scN'));if(!sc)return;const {c,n}=sc;
     await put('scores',uid(),{type:$('#scType').value,topic:$('#scTopic').value,date:$('#scDate').value||todayISO(),c,n,pct:pct(c,n)});forceRender();toast('Score added')
   }
   else if(a==='delscore'){await del('scores',b.dataset.id);forceRender()}
@@ -1174,10 +1285,12 @@ document.addEventListener('change',async e=>{
   else if(t.id==='sTopic'){setup.topic=t.value;setup.touched=true;setup.moduleId='';setup.module=$('#sModule').value;forceRender()}
   else if(t.id==='sModSel'){setup.moduleId=t.value||'__other'}
   else if(t.dataset.act==='moddone'){const k=t.dataset.topic;await saveMods(k,mods(k).map(m=>m.id===t.dataset.id?{...m,done:t.checked,doneOn:t.checked?todayISO():null}:m));forceRender()}
+  else if(t.id==='restoreFile'){const f=t.files?.[0];t.value='';if(f)await restoreBackup(f)}
   else if(t.id==='cFilter'){cardFilter=t.value;forceRender()}
   else if(t.id==='cShowAdded'){showAdded=t.checked;forceRender()}
   else if(t.id==='mOpen'){mFilter.open=t.checked;forceRender()}
   else if(t.id==='fsTopic'){syncBinds();run.data.fsTopic=t.value;saveRun();forceRender()}
+  else if(t.dataset.quiz&&t.dataset.f==='topic'){syncBinds();render.keep=true;forceRender()}
   else if(t.dataset.bind||t.dataset.quiz){syncBinds()}
 });
 function syncBinds(){
@@ -1186,23 +1299,32 @@ function syncBinds(){
   document.querySelectorAll('[data-quiz]').forEach(el=>{
     let q=run.data.quizzes.find(x=>x.step===el.dataset.quiz);
     if(!q){q={step:el.dataset.quiz,topic:el.dataset.qtopic,n:'',c:''};run.data.quizzes.push(q)}
-    q[el.dataset.f]=el.value===''?'':+el.value;
+    q[el.dataset.f]=el.dataset.f==='topic'?el.value:el.value===''?'':+el.value;
   });
   saveRun();
 }
-let noteTimer=null;
+let noteTimer=null, noteK=null;
+// Saves a note that's waiting on the typing pause. Runs early when you leave the page so the last words aren't lost.
+async function flushNote(){
+  if(!noteK)return;clearTimeout(noteTimer);const k=noteK;noteK=noteTimer=null;
+  const ok=await put('notes',k,{...S.notes[k]});const s2=$('#nSaved');if(s2)s2.textContent=ok?'Saved':'Saved on this device. It will sync when you\u2019re back online.';
+}
+addEventListener('pagehide',()=>flushNote());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushNote()});
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.dataset.bind||t.dataset.quiz){syncBinds()}
   if(t.tagName==='TEXTAREA')grow(t);
   if(t.id==='sModule')setup.module=t.value;
+  if(t.id==='fDate'&&run){run.data.date=t.value;saveRun()}
   if(t.id==='fMins'&&run){run.data.mins=t.value;saveRun()} // only once you've changed it; otherwise it follows the timer
-  if(t.dataset.quiz){const q=run?.data.quizzes.find(x=>x.step===t.dataset.quiz),o=$('#q_pct_'+t.dataset.quiz);if(o)o.textContent=q&&q.n?pct(q.c,q.n)+'%':'—'}
+  if(t.dataset.quiz){const q=run?.data.quizzes.find(x=>x.step===t.dataset.quiz),o=$('#q_pct_'+t.dataset.quiz);if(o)o.textContent=quizPct(q)}
   if(t.dataset.note){
     const s=$('#nSaved'); if(s)s.textContent='Saving…';
-    clearTimeout(noteTimer); const k=noteTopic;
-    S.notes[k]={...(S.notes[k]||{}),[t.dataset.note]:t.value};
-    noteTimer=setTimeout(async()=>{await put('notes',k,{...S.notes[k]});const s2=$('#nSaved');if(s2)s2.textContent='Saved'},1200);
+    if(noteK&&noteK!==noteTopic)flushNote();
+    clearTimeout(noteTimer); noteK=noteTopic;
+    S.notes[noteK]={...(S.notes[noteK]||{}),[t.dataset.note]:t.value};
+    noteTimer=setTimeout(flushNote,1200);
   }
 });
 // A redraw that was held back while you were typing runs once you leave the form, but never in the middle of a

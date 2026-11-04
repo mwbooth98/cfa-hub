@@ -30,6 +30,10 @@ Marcus's personal study app for the CFA Level I exam (May 11–17, 2027). Read t
 - Must work at 400px wide and on public computers (non-trusted sign-in uses sessionStorage + 1 h idle sign-out).
 - Plain, direct UI copy; no emoji as decoration.
 
+## Saving
+- All writes go through `put`/`del`, which queue the change in an outbox (localStorage when trusted, else sessionStorage), show it on screen at once and retry until Supabase confirms. `loadAll` re-applies queued changes over server data. Never write to Supabase directly.
+- Session quiz steps carry their own topic (`mixed` allowed); mixed scores never count toward a topic average. Only module/deep sessions carry a `moduleId`. Sessions saved from now on have `v:2`.
+
 ## Testing before a push
 - `node --check` on the extracted `<script>` block.
-- Headless Playwright with a stubbed `window.supabase` (route the jsDelivr script) to render each view at 1280px and 400px and fail on page errors or horizontal overflow.
+- `node tests/smoke.js`: renders every view at 1280px and 400px (fails on page errors or sideways scroll) and runs behaviour checks (offline save, score validation, mistakes, sign-in expiry, idle sign-out, notes, backup) against the stub in `tests/stub-supabase.js`. Add a check when you change behaviour.
