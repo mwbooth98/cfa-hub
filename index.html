@@ -118,9 +118,6 @@ tr.now td{background:var(--accent-soft)}
 .ctrl{display:flex;gap:8px;flex-wrap:wrap}
 .ideas .li{flex-wrap:wrap}
 .ideas .idea{font-size:14.5px;line-height:1.45;min-width:160px;overflow-wrap:anywhere}
-.adj{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
-.adj>span:first-child{margin-right:2px}
-.adj #studied{margin-left:auto}
 .card-face{min-height:150px;display:grid;place-items:center;text-align:center;font-size:18px;padding:24px;background:var(--bg);border-radius:var(--r);border:1px solid var(--line);white-space:pre-wrap}
 .card-face.back{font-size:16px}
 .rate{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -646,13 +643,13 @@ function updateClock(){
   const a=Math.abs(Math.round(left));
   el.textContent=(left<0?'+':'')+Math.floor(a/60)+':'+pad(a%60);
   el.classList.toggle('over',left<0);
-  const s2=$('#studied');if(s2)s2.textContent=Math.floor(stepElapsed(run.i)/60)+' min on this step';
   const te=$('#totEl');if(te)te.textContent=Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60);
   if(left<=0&&!run.chimed?.[run.i]){run.chimed=run.chimed||{};run.chimed[run.i]=1;chime();saveRun()}
 }
 let actx=null;
 function chime(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,actx.currentTime);g.gain.exponentialRampToValueAtTime(.2,actx.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+.6);o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+.65)}catch(e){}}
 async function keepAwake(){try{if('wakeLock' in navigator)wake=await navigator.wakeLock.request('screen')}catch(e){}}
+function trackedMins(){return Math.max(1,Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60))}
 function bank(){if(run&&run.stepStart&&!run.paused){run.elapsed[run.i]=(run.elapsed[run.i]||0)+(Date.now()-run.stepStart)/1000;run.stepStart=Date.now()}}
 
 /* ---------- views ---------- */
@@ -831,7 +828,6 @@ function vSession(){
             <button class="primary" data-act="nextstep">${run.i===run.steps.length-1?'Finish':'Next step'}</button>
           </div>
         </div>
-        <div class="adj"><span>Correct the timer</span>${[[-5,'Took a break without pausing: take 5 minutes off'],[-1,'Take 1 minute off'],[1,'Add 1 minute you studied'],[5,'Forgot to start it: add 5 minutes you studied']].map(([m,t])=>`<button class="small" data-act="adjust" data-m="${m}" title="${t}" aria-label="${t}">${m>0?'+':'−'}${Math.abs(m)} min</button>`).join('')}<span class="num" id="studied">${Math.floor(stepElapsed(run.i)/60)} min on this step</span></div>
         <ul class="guide">${st.guide.map(g=>`<li>${esc(g)}</li>`).join('')}</ul>
         <div class="why">${esc(st.why)}</div>
       </section>
@@ -918,11 +914,13 @@ function cardForm(ctx){
   <div class="fit"><button data-act="addcard" data-ctx="${ctx}">Add card</button></div></div>`;
 }
 function vFinish(){
-  const mins=Math.max(1,Math.round(run.steps.reduce((a,_,i)=>a+stepElapsed(i),0)/60));
+  const mins=trackedMins();
   const qs=run.data.quizzes.filter(q=>q.n);
-  return `<header><div class="eyebrow">Session complete</div><h1>${mins} minutes on ${esc(TOPICS[run.topic].short)}</h1></header>
-  <section class="panel"><div class="stats" style="margin-bottom:14px">
-    <div class="stat"><b>${mins}</b><span>minutes</span></div>
+  return `<header><div class="eyebrow">Session complete</div><h1>${esc(TOPICS[run.topic].name)}</h1></header>
+  <section class="panel">
+    <div class="row" style="margin-bottom:14px"><label>Minutes studied<input id="fMins" type="number" min="1" inputmode="numeric" value="${esc(String(run.data.mins??mins))}"></label></div>
+    <p class="sub" style="font-size:12.5px;margin:-8px 0 14px">The timer tracked ${mins} min. Change it if you took a break without pausing or studied without the timer running.</p>
+    <div class="stats" style="margin-bottom:14px;grid-template-columns:repeat(3,1fr)">
     <div class="stat"><b>${qs.length?pct(qs.reduce((a,q)=>a+q.c,0),qs.reduce((a,q)=>a+q.n,0))+'%':'—'}</b><span>quiz score</span></div>
     <div class="stat"><b>${run.data.cards.length}</b><span>new cards</span></div>
     <div class="stat"><b>${run.data.mistakes.length}</b><span>mistakes logged</span></div></div>
@@ -1087,18 +1085,15 @@ document.addEventListener('click',async e=>{
     if(a==='goto')run.i=+b.dataset.i; else if(run.i<run.steps.length-1)run.i++; else {run.finished=true;run.paused=true}
     run.stepStart=Date.now(); if(!run.finished)run.paused=false; saveRun();forceRender();window.scrollTo(0,0)
   }
-  else if(a==='adjust'){
-    // Move the current step's clock forward (time you studied but didn't log) or back (a break you forgot to pause for).
-    bank();const i=run.i,before=run.elapsed[i]||0;run.elapsed[i]=Math.max(0,before+ +b.dataset.m*60);
-    if(run.chimed&&run.elapsed[i]<run.steps[i].m*60)delete run.chimed[i];
-    saveRun();updateClock();if(before&&!run.elapsed[i])toast('This step is back to 0:00')}
   else if(a==='backto'){run.finished=false;run.paused=false;run.stepStart=Date.now();saveRun();forceRender()}
   else if(a==='abandon'){
     if(b.dataset.sure){run=null;saveRun();forceRender();toast('Session discarded')}
     else{b.dataset.sure=1;b.textContent='Tap again to discard';setTimeout(()=>{if(b.isConnected){delete b.dataset.sure;b.textContent='Discard this session'}},3000)}
   }
   else if(a==='savesession'){
-    const mins=Math.max(1,Math.round(run.steps.reduce((x,_,i)=>x+stepElapsed(i),0)/60));
+    syncBinds();const typed=Math.round(+$('#fMins').value);
+    if(!(typed>=1)){$('#fMins').focus();toast('Enter the minutes you studied');return}
+    const mins=typed;
     const d=run.data, id=uid(), t=todayISO();
     const doc={date:t,ts:Date.now(),tpl:run.tpl,topic:run.topic,module:run.module,moduleId:run.moduleId||null,minutes:mins,planned:run.steps.reduce((x,s)=>x+s.m,0),
       quizzes:d.quizzes.filter(q=>q.n).map(q=>({topic:q.topic,n:+q.n,c:+q.c})),blurt:d.blurt,gaps:d.gaps,focus:+$('#fFocus').value||null,note:$('#fNote').value.trim()};
@@ -1201,6 +1196,7 @@ document.addEventListener('input',e=>{
   if(t.dataset.bind||t.dataset.quiz){syncBinds()}
   if(t.tagName==='TEXTAREA')grow(t);
   if(t.id==='sModule')setup.module=t.value;
+  if(t.id==='fMins'&&run){run.data.mins=t.value;saveRun()} // only once you've changed it; otherwise it follows the timer
   if(t.dataset.quiz){const q=run?.data.quizzes.find(x=>x.step===t.dataset.quiz),o=$('#q_pct_'+t.dataset.quiz);if(o)o.textContent=q&&q.n?pct(q.c,q.n)+'%':'—'}
   if(t.dataset.note){
     const s=$('#nSaved'); if(s)s.textContent='Saving…';
